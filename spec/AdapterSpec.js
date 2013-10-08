@@ -1,0 +1,2 @@
+describe("Frozen Adapter", function () {
+});
