@@ -1,4 +1,4 @@
-Ember Frozen
+Ember Frozen [![Build Status](https://travis-ci.org/madchicken/ember-frozen.png)](https://travis-ci.org/madchicken/ember-frozen)
 ===
 
 Another persistence layer for the amazing Emberjs Library
