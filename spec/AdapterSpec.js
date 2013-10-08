@@ -35,6 +35,26 @@ describe("Frozen Adapter", function () {
         expect(typeof person.then).toBe('function');
         expect(person.get('name')).toBe('John');
         expect(person.get('age')).toBe(39);
+        expect(person.get('address.content') instanceof Test.Address).toBeTruthy();
+        expect(person.get('address.address')).toBe('address string');
+    });
+
+    it('Loading all models using findAll method will return an array of populated records with their relationships', function() {
+        Test.Address = Model.extend({
+            address: attr()
+        });
+        Test.Person = Model.extend({
+            name: attr(),
+            age: attr('number'),
+            address: hasOne(Test.Address)
+        });
+
+        var persons = Test.Person.findAll();
+        expect(persons.get('length')).toBe(2);
+        var person = persons.objectAt(1);
+        expect(person.get('name')).toBe('John');
+        expect(person.get('age')).toBe(39);
+        expect(person.get('address.content') instanceof Test.Address).toBeTruthy();
         expect(person.get('address.address')).toBe('address string');
     });
 });

@@ -301,7 +301,11 @@
             return this.adapter.find(this, id);
         },
 
-        findAll: function (data) {
+        findAll: function () {
+            var records = Frzn.RecordArray.create({
+                type: this
+            });
+            return this.adapter.findAll(this, records);
         },
 
         findQuery: function (data) {

@@ -22,8 +22,34 @@ Frzn.AbstractAdapter = Ember.Object.extend({
     pageProperty: null
 });
 
+Frzn.RecordArray = Ember.ArrayProxy.extend(Ember.DeferredMixin, {
+    load: function(data) {
+        this.set('content', Em.A([]));
+        if(data instanceof Array) {
+            for(var i = 0; i < data.length; i++) {
+                console.log('Creating a new ' + this.type);
+                this.pushObject(this.type.create(data[i]));
+            }
+        }
+    }
+});
+
+
 Frzn.Fixtures = {};
 Frzn.FixturesAdapter = Frzn.AbstractAdapter.extend({
+    extractMeta: function(data) {
+        var meta = {};
+        if(this.adapter) {
+            if(this.adapter.totalProperty) {
+                meta[this.adapter.rootProperty] = data[this.adapter.rootProperty];
+            }
+            if(this.adapter.pageProperty) {
+                meta[this.adapter.pageProperty] = data[this.adapter.pageProperty];
+            }
+        }
+        return meta;
+    },
+
     find: function(modelClass, id) {
         var record = modelClass.create();
         var name = modelClass.getName();
@@ -39,8 +65,23 @@ Frzn.FixturesAdapter = Frzn.AbstractAdapter.extend({
         }
         return record;
     },
-    findAll: function() {
-        Ember.assert("You must provide a valid findAll function for your adapter", false);
+    findAll: function(modelClass, records) {
+        var name = modelClass.getName();
+        if(Frzn.Fixtures[name]) {
+            var data = [];
+            for(var id in Frzn.Fixtures[name]) {
+                data.push(Frzn.Fixtures[name][id]);
+            }
+            records.load(data);
+            records.resolve(records);
+        } else {
+            records.reject({
+                errorCode: 404,
+                type: 'error',
+                message: 'Object not found'
+            });
+        }
+        return records;
     },
     findQuery: function() {
         Ember.assert("You must provide a valid findQuery function for your adapter", false);
@@ -57,21 +98,6 @@ Frzn.FixturesAdapter = Frzn.AbstractAdapter.extend({
     rootProperty: null,
     totalProperty: null,
     pageProperty: null
-});
-
-Frzn.QuerySearchResult = Ember.ArrayProxy.extend(Ember.DeferredMixin, {
-    extractMeta: function(data) {
-        var meta = {};
-        if(this.adapter) {
-            if(this.adapter.totalProperty) {
-                meta[this.adapter.rootProperty] = data[this.adapter.rootProperty];
-            }
-            if(this.adapter.pageProperty) {
-                meta[this.adapter.pageProperty] = data[this.adapter.pageProperty];
-            }
-        }
-        return meta;
-    }
 });
 
 Frzn.UrlMappingAdapter = Frzn.AbstractAdapter.extend({
