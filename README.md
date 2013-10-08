@@ -25,8 +25,21 @@ Open `SpecRunner.html` in your browser and test with jasmine
 
 
 ```javascript
-//Get Version
-Frzn.version;
+//Define your own model
+var Address = Frzn.Model.extend({
+    city: Frzn.attr('string'), //a string attribute
+    formattedAddress: Frzn.attr() //default type for an attribute is always 'string'
+});
+
+//Define model relationships
+var Person = Frzn.Model.extend({
+    name: Frzn.attr(), //default type for an attribute is 'string'
+    age: Frzn.attr('number'), //Javascript Number will be used to store data
+    birthDate: Frzn.attr('date'), //Javascript Date will be used to store data,
+    addresses: Frzn.hasMany(Address)
+});
+
+
 ```
 
 ### License

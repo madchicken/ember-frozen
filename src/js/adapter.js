@@ -22,6 +22,43 @@ Frzn.AbstractAdapter = Ember.Object.extend({
     pageProperty: null
 });
 
+Frzn.Fixtures = {};
+Frzn.FixturesAdapter = Frzn.AbstractAdapter.extend({
+    find: function(modelClass, id) {
+        var record = modelClass.create();
+        var name = modelClass.getName();
+        if(Frzn.Fixtures[name][id]) {
+            record.load(Frzn.Fixtures[name][id]);
+            record.resolve(record);
+        } else {
+            record.reject({
+                errorCode: 404,
+                type: 'error',
+                message: 'Object not found'
+            });
+        }
+        return record;
+    },
+    findAll: function() {
+        Ember.assert("You must provide a valid findAll function for your adapter", false);
+    },
+    findQuery: function() {
+        Ember.assert("You must provide a valid findQuery function for your adapter", false);
+    },
+    createRecord: function() {
+        Ember.assert("You must provide a valid createRecord function for your adapter", false);
+    },
+    updateRecord: function() {
+        Ember.assert("You must provide a valid updateRecord function for your adapter", false);
+    },
+    deleteRecord: function() {
+        Ember.assert("You must provide a valid delete function for your adapter", false);
+    },
+    rootProperty: null,
+    totalProperty: null,
+    pageProperty: null
+});
+
 Frzn.QuerySearchResult = Ember.ArrayProxy.extend(Ember.DeferredMixin, {
     extractMeta: function(data) {
         var meta = {};

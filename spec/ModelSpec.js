@@ -170,37 +170,19 @@ describe("Frozen Model", function () {
         expect(json.birthDate).toBe((new Date(1974, 6, 17)).toISOString());
     });
 
-    it('Defining an hasOne relationship, should create a field definition for the given model', function() {
-        var Address = Model.extend({
-            address: attr()
-        });
-        var Person = Model.extend({
-            name: attr(),
-            address: hasOne(Address)
-        });
-
-        var person = Person.create({name: 'John', address: Address.create({address: 'address string'})});
-        expect(person.get('address') instanceof Address).toBe(true);
-        expect(person.get('address')).toBe(person.get('_relationships.address.content'));
-    });
-
     it('Loading a model using the load function should populate the object and commit the result', function() {
-        var Address = Model.extend({
-            address: attr()
-        });
         var Person = Model.extend({
             name: attr(),
             age: attr('number'),
-            birthDate: attr('date'),
-            address: hasOne(Address)
+            birthDate: attr('date')
         });
 
-        var data = {name: 'John', age: 39, birthDate: (new Date(1974, 6, 17)).toISOString(), address: {address: 'My home address'}};
+        var data = {name: 'John', age: 39, birthDate: (new Date(1974, 6, 17)).toISOString()};
         var person = Person.create({});
         person.load(data);
         expect(person.get('name')).toBe('John');
         expect(person.get('age')).toBe(39);
         expect(person.get('birthDate').toISOString()).toBe((new Date(1974, 6, 17)).toISOString());
-        expect(person.get('address.address')).toBe('My home address');
     });
+
 });

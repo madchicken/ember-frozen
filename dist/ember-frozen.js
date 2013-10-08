@@ -8,6 +8,8 @@
          * Utility function to define a model attribute
          * @param type The type of attribute. Default to 'string'
          * @returns a computed property for the given attribute
+         * @param options An hash describing the attribute. Accepted values are:
+         *      defaultValue: a default value for the field when it is not defined (not valid for relationships)
          */
         attr: function (type, options) {
             type = type || 'string';
@@ -15,32 +17,38 @@
             return function (key, value) {
                 this._initField(key, options);
                 var converter = Frzn.getConverter(type);
-                if(options.isRelationship) {
-                    key += '.content'; //use wrapped content in Ember proxy object
-                }
                 if (arguments.length > 1) {
-                    var oldValue = this.get('_data.'+key);
+                    var path = '_data.' + key;
+                    if(options.isRelationship) {
+                        path = '_data.' + key + '.content'; //use wrapped content in Ember proxy object
+                    }
+                    var oldValue = this.get(path);
                     value = converter.convert(value, options);
-                    this.set('_data.'+key, value);
+                    this.set(path, value);
                     if(oldValue != value)
                         this._markDirty(key);
                 }
                 value = this.get('_data.'+key);
                 return value;
-            }.property().meta({type: type, options: options});
+            }.property('_data').meta({type: type, options: options});
         },
 
         hasMany: function (destination, options) {
-            return new HasManyRelationship({
-                _destination: destination,
-                _options: options
-            });
+            options = options || {};
+            Frzn.registerConverter("hasMany"+destination, ModelArrayConverter.extend({}));
+            return Frzn.attr("hasMany"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasMany', destination: destination}))
         },
 
         hasOne: function(destination, options) {
             options = options || {};
-            Frzn.registerConverter(destination, ModelConverter.extend({}));
-            return Frzn.attr(destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasOne', destination: destination}))
+            Frzn.registerConverter("hasOne"+destination, ModelConverter.extend({}));
+            return Frzn.attr("hasOne"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasOne', destination: destination}))
+        },
+
+        belongsTo: function(destination, options) {
+            options = options || {};
+            Frzn.registerConverter("belongsTo"+destination, ModelConverter.extend({}));
+            return Frzn.attr("belongsTo"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'belongsTo', destination: destination}))
         },
 
         registerConverter: function(name, converter) {
@@ -70,6 +78,20 @@
                     return options.destination.create(value);
                 }
             }
+            return null;
+        }
+    });
+
+    var ModelArrayConverter = Ember.Object.extend({
+        convert: function(value, options) {
+            if(value instanceof Array) {
+                var array = [];
+                for(var i = 0; i < value.length; i++) {
+                    array.push(options.destination.create(value[i]))
+                }
+                return array;
+            }
+            return null;
         }
     });
 
@@ -97,7 +119,7 @@
             if(value !== null && value !== undefined) {
                 if(typeof value === 'string') {
                     var d = new Date(Date.parse(value));
-                    if(Number.isNaN(d.getTime()))
+                    if(isNaN(d.getTime()))
                         return null;
                     else
                         return d;
@@ -111,54 +133,42 @@
         }
     }));
 
-    var HasManyRelationship = Ember.ArrayProxy.extend({
-        _destination: null,
-        concatenatedProperties: ['options'],
-        _mappedBy: null,
-
-        init: function () {
-            this.options = Ember.Object.create({
-                embedded: false
-            });
-        },
-
-        mappedBy: function () {
-            if (this.get('_options.mappedBy')) {
-                return this.get('_options.mappedBy');
-            } else {
-                var name = this.constructor + "";
-                name = name.substr(name.lastIndexOf("."));
-                return name.toLowerCase();
-            }
-        }.property('_options.mappedBy').cacheable()
+    var Relationship = Em.Mixin.create({
+        getObjectClass: function() {
+            return this.get('options.destination');
+        }
     });
 
-    var HasOneRelationship = Ember.ObjectProxy.extend({
-        _destination: null,
-        concatenatedProperties: ['options'],
-        _mappedBy: null,
-
+    var HasManyRelationship = Ember.ArrayProxy.extend(Relationship, {
         init: function () {
-            this._options = Ember.Object.create({
-                embedded: false
-            });
+            this.set('content', Em.A([]));
+            this._super();
         },
 
-        mappedBy: function () {
-            if (this.get('_options.mappedBy')) {
-                return this.get('_options.mappedBy');
-            } else {
-                var name = this.constructor + "";
-                name = name.substr(name.lastIndexOf("."));
-                return name.toLowerCase();
+        create: function(data) {
+            var o = this.get('options.destination').create(data);
+            this.pushObject(o);
+            return o;
+        }
+    });
+
+    var HasOneRelationship = Ember.ObjectProxy.extend(Relationship, {
+    });
+
+    var BelongsToRelationship = Ember.ObjectProxy.extend(Relationship, {
+        init: function() {
+            this._super();
+            this['get' + this.get('mappedBy')] = function() {
+                return "yo";
             }
-        }.property('_options.mappedBy').cacheable()
+        }
     });
 
     var relationships = {
         hasOne: HasOneRelationship,
-        hasMany: HasManyRelationship
-    }
+        hasMany: HasManyRelationship,
+        belongsTo: BelongsToRelationship,
+    };
 
     Frzn.Model = Ember.Object.extend(Ember.DeferredMixin, Ember.Evented, {
         isAjax: false,
@@ -206,7 +216,7 @@
                 if(options.isRelationship) {
                     //For relationships we create a wrapper object using Ember proxies
                     var rel = relationships[options.relationshipType].create({
-                        _destination: options.destination
+                        options: options
                     });
                     this.set('_relationships.' + name, rel);
                     this.get('_backup')[name] = rel;
@@ -279,27 +289,16 @@
     });
 
     Frzn.Model.reopenClass({
-        fromJson: function (data) {
-            return this.create(data);
-        },
-
-        createItemRecords: function (recs) {
-            var ModelClass = this;
-            return recs.map(function (item) {
-                return ModelClass.fromJson(item);
-            });
-        },
-
-        urlForAction: function (action) {
-            var u = this.resourceUrl;
-            if (u.lastIndexOf('/') != u.length - 1) {
-                u += "/";
+        getName: function() {
+            var name = this+"";
+            if(name.lastIndexOf(".") != -1) {
+                name = name.substr(name.lastIndexOf(".")+1);
             }
-            return baseUrl + u + (this.actions[action] || action);
+            return name.toLowerCase();
         },
 
         find: function (id) {
-            this.adapter.find(id);
+            return this.adapter.find(this, id);
         },
 
         findAll: function (data) {
@@ -315,6 +314,43 @@
 Frzn.AbstractAdapter = Ember.Object.extend({
     find: function() {
         Ember.assert("You must provide a valid find function for your adapter", false);
+    },
+    findAll: function() {
+        Ember.assert("You must provide a valid findAll function for your adapter", false);
+    },
+    findQuery: function() {
+        Ember.assert("You must provide a valid findQuery function for your adapter", false);
+    },
+    createRecord: function() {
+        Ember.assert("You must provide a valid createRecord function for your adapter", false);
+    },
+    updateRecord: function() {
+        Ember.assert("You must provide a valid updateRecord function for your adapter", false);
+    },
+    deleteRecord: function() {
+        Ember.assert("You must provide a valid delete function for your adapter", false);
+    },
+    rootProperty: null,
+    totalProperty: null,
+    pageProperty: null
+});
+
+Frzn.Fixtures = {};
+Frzn.FixturesAdapter = Frzn.AbstractAdapter.extend({
+    find: function(modelClass, id) {
+        var record = modelClass.create();
+        var name = modelClass.getName();
+        if(Frzn.Fixtures[name][id]) {
+            record.load(Frzn.Fixtures[name][id]);
+            record.resolve(record);
+        } else {
+            record.reject({
+                errorCode: 404,
+                type: 'error',
+                message: 'Object not found'
+            });
+        }
+        return record;
     },
     findAll: function() {
         Ember.assert("You must provide a valid findAll function for your adapter", false);
