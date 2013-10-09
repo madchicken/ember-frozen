@@ -17,8 +17,8 @@
             return function (key, value) {
                 this._initField(key, options);
                 var converter = Frzn.getConverter(type);
+                var path = '_data.' + key;
                 if (arguments.length > 1) {
-                    var path = '_data.' + key;
                     if(options.isRelationship) {
                         path = '_data.' + key + '.content'; //use wrapped content in Ember proxy object
                     }
@@ -27,26 +27,34 @@
                     this.set(path, value);
                     if(oldValue != value)
                         this._markDirty(key);
+                } else {
+                    value = this.get(path);
+                    if(options.isRelationship && !options.embedded) {
+                        console.log('Resolving relationship')
+                        value.set('content', options.destination.find(this.get('_data.'+key+'.id'))); //TODO: fix for generic id mapping needed
+                    }
                 }
-                value = this.get('_data.'+key);
                 return value;
-            }.property('_data').meta({type: type, options: options});
+            }.property('_data').cacheable(false).meta({type: type, options: options});
         },
 
         hasMany: function (destination, options) {
             options = options || {};
+            options.embedded = options.embedded !== undefined ? options.embedded : true;
             Frzn.registerConverter("hasMany"+destination, ModelArrayConverter.extend({}));
             return Frzn.attr("hasMany"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasMany', destination: destination}))
         },
 
         hasOne: function(destination, options) {
             options = options || {};
+            options.embedded = options.embedded !== undefined ? options.embedded : true;
             Frzn.registerConverter("hasOne"+destination, ModelConverter.extend({}));
             return Frzn.attr("hasOne"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasOne', destination: destination}))
         },
 
         belongsTo: function(destination, options) {
             options = options || {};
+            options.embedded = options.embedded !== undefined ? options.embedded : true;
             Frzn.registerConverter("belongsTo"+destination, ModelConverter.extend({}));
             return Frzn.attr("belongsTo"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'belongsTo', destination: destination}))
         },
@@ -210,7 +218,7 @@
         }.property(),
 
         _initField: function(name, options) {
-            if(!this.get('_backup')[name]) {
+            if(this.get('_backup').hasOwnProperty(name) === false) {
                 Ember.assert("Field name must not be null", name !== null && name !== undefined && name != "");
                 options = options || {};
                 if(options.isRelationship) {
@@ -285,6 +293,18 @@
             this.setProperties(data)
             this.commit();
             return this;
+        },
+
+        save: function() {
+            return this.constructor.adapter.createRecord(this.constructor, this);
+        },
+
+        update: function() {
+            return this.constructor.adapter.updateRecord(this.constructor, this);
+        },
+
+        remove: function() {
+            return this.constructor.adapter.deleteRecord(this.constructor, this);
         }
     });
 
@@ -298,7 +318,8 @@
         },
 
         find: function (id) {
-            return this.adapter.find(this, id);
+            var record = this.create()
+            return this.adapter.find(this, record, id);
         },
 
         findAll: function () {
@@ -308,7 +329,19 @@
             return this.adapter.findAll(this, records);
         },
 
-        findQuery: function (data) {
+        findQuery: function (params) {
+            var records = Frzn.RecordArray.create({
+                type: this
+            });
+            return this.adapter.findQuery(this, records, params);
+        },
+
+        findIds: function () {
+            var records = Frzn.RecordArray.create({
+                type: this
+            });
+            var ids = Array.prototype.slice.apply(arguments);
+            return this.adapter.findIds(this, records, ids);
         }
     });
 

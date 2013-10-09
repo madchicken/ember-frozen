@@ -17,8 +17,8 @@
             return function (key, value) {
                 this._initField(key, options);
                 var converter = Frzn.getConverter(type);
+                var path = '_data.' + key;
                 if (arguments.length > 1) {
-                    var path = '_data.' + key;
                     if(options.isRelationship) {
                         path = '_data.' + key + '.content'; //use wrapped content in Ember proxy object
                     }
@@ -27,26 +27,34 @@
                     this.set(path, value);
                     if(oldValue != value)
                         this._markDirty(key);
+                } else {
+                    value = this.get(path);
+                    if(options.isRelationship && !options.embedded) {
+                        console.log('Resolving relationship')
+                        value.set('content', options.destination.find(this.get('_data.'+key+'.id'))); //TODO: fix for generic id mapping needed
+                    }
                 }
-                value = this.get('_data.'+key);
                 return value;
-            }.property('_data').meta({type: type, options: options});
+            }.property('_data').cacheable(false).meta({type: type, options: options});
         },
 
         hasMany: function (destination, options) {
             options = options || {};
+            options.embedded = options.embedded !== undefined ? options.embedded : true;
             Frzn.registerConverter("hasMany"+destination, ModelArrayConverter.extend({}));
             return Frzn.attr("hasMany"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasMany', destination: destination}))
         },
 
         hasOne: function(destination, options) {
             options = options || {};
+            options.embedded = options.embedded !== undefined ? options.embedded : true;
             Frzn.registerConverter("hasOne"+destination, ModelConverter.extend({}));
             return Frzn.attr("hasOne"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasOne', destination: destination}))
         },
 
         belongsTo: function(destination, options) {
             options = options || {};
+            options.embedded = options.embedded !== undefined ? options.embedded : true;
             Frzn.registerConverter("belongsTo"+destination, ModelConverter.extend({}));
             return Frzn.attr("belongsTo"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'belongsTo', destination: destination}))
         },
@@ -210,7 +218,7 @@
         }.property(),
 
         _initField: function(name, options) {
-            if(!this.get('_backup')[name]) {
+            if(this.get('_backup').hasOwnProperty(name) === false) {
                 Ember.assert("Field name must not be null", name !== null && name !== undefined && name != "");
                 options = options || {};
                 if(options.isRelationship) {
@@ -285,6 +293,18 @@
             this.setProperties(data)
             this.commit();
             return this;
+        },
+
+        save: function() {
+            return this.constructor.adapter.createRecord(this.constructor, this);
+        },
+
+        update: function() {
+            return this.constructor.adapter.updateRecord(this.constructor, this);
+        },
+
+        remove: function() {
+            return this.constructor.adapter.deleteRecord(this.constructor, this);
         }
     });
 
@@ -298,7 +318,8 @@
         },
 
         find: function (id) {
-            return this.adapter.find(this, id);
+            var record = this.create()
+            return this.adapter.find(this, record, id);
         },
 
         findAll: function () {
@@ -308,7 +329,19 @@
             return this.adapter.findAll(this, records);
         },
 
-        findQuery: function (data) {
+        findQuery: function (params) {
+            var records = Frzn.RecordArray.create({
+                type: this
+            });
+            return this.adapter.findQuery(this, records, params);
+        },
+
+        findIds: function () {
+            var records = Frzn.RecordArray.create({
+                type: this
+            });
+            var ids = Array.prototype.slice.apply(arguments);
+            return this.adapter.findIds(this, records, ids);
         }
     });
 
@@ -316,6 +349,8 @@
 })();
 
 Frzn.AbstractAdapter = Ember.Object.extend({
+    extractMeta: null,
+
     find: function() {
         Ember.assert("You must provide a valid find function for your adapter", false);
     },
@@ -324,6 +359,9 @@ Frzn.AbstractAdapter = Ember.Object.extend({
     },
     findQuery: function() {
         Ember.assert("You must provide a valid findQuery function for your adapter", false);
+    },
+    findIds: function() {
+        Ember.assert("You must provide a valid findIds function for your adapter", false);
     },
     createRecord: function() {
         Ember.assert("You must provide a valid createRecord function for your adapter", false);
@@ -344,34 +382,23 @@ Frzn.RecordArray = Ember.ArrayProxy.extend(Ember.DeferredMixin, {
         this.set('content', Em.A([]));
         if(data instanceof Array) {
             for(var i = 0; i < data.length; i++) {
-                console.log('Creating a new ' + this.type);
                 this.pushObject(this.type.create(data[i]));
             }
+        }
+        if(this.type.adapter.extractMeta && typeof this.type.adapter.extractMeta === 'function') {
+            this.type.adapter.extractMeta(data, this);
         }
     }
 });
 
+Frzn.InMemoryAdapter = Frzn.AbstractAdapter.extend({
+    store: null,
 
-Frzn.Fixtures = {};
-Frzn.FixturesAdapter = Frzn.AbstractAdapter.extend({
-    extractMeta: function(data) {
-        var meta = {};
-        if(this.adapter) {
-            if(this.adapter.totalProperty) {
-                meta[this.adapter.rootProperty] = data[this.adapter.rootProperty];
-            }
-            if(this.adapter.pageProperty) {
-                meta[this.adapter.pageProperty] = data[this.adapter.pageProperty];
-            }
-        }
-        return meta;
-    },
-
-    find: function(modelClass, id) {
-        var record = modelClass.create();
+    find: function(modelClass, record, id) {
         var name = modelClass.getName();
-        if(Frzn.Fixtures[name][id]) {
-            record.load(Frzn.Fixtures[name][id]);
+        var data = this.store[name].findBy('id', id);
+        if(data) {
+            record.load(data);
             record.resolve(record);
         } else {
             record.reject({
@@ -382,12 +409,29 @@ Frzn.FixturesAdapter = Frzn.AbstractAdapter.extend({
         }
         return record;
     },
+
     findAll: function(modelClass, records) {
         var name = modelClass.getName();
-        if(Frzn.Fixtures[name]) {
-            var data = [];
-            for(var id in Frzn.Fixtures[name]) {
-                data.push(Frzn.Fixtures[name][id]);
+        if(this.store[name]) {
+            var data = this.store[name];
+            records.load(data);
+            records.resolve(records);
+        } else {
+            records.reject({
+                errorCode: 404,
+                type: 'error',
+                message: 'Object not found'
+            });
+        }
+        return records;
+    },
+
+    findQuery: function(modelClass, records, params) {
+        var name = modelClass.getName();
+        if(this.store[name]) {
+            var data = this.store[name];
+            for(var prop in params) {
+                data = data.filterBy(prop, params[prop]);
             }
             records.load(data);
             records.resolve(records);
@@ -400,11 +444,33 @@ Frzn.FixturesAdapter = Frzn.AbstractAdapter.extend({
         }
         return records;
     },
-    findQuery: function() {
-        Ember.assert("You must provide a valid findQuery function for your adapter", false);
+
+    findIds: function(modelClass, records, ids) {
+        var name = modelClass.getName();
+        if(this.store[name]) {
+            var data = Em.A([]);
+            for(var index = 0; index < ids.length; index++) {
+                var rec = this.store[name].findBy('id', ids[index]);
+                data.push(rec);
+            }
+            records.load(data);
+            records.resolve(records);
+        } else {
+            records.reject({
+                errorCode: 404,
+                type: 'error',
+                message: 'Object not found'
+            });
+        }
+        return records;
     },
-    createRecord: function() {
-        Ember.assert("You must provide a valid createRecord function for your adapter", false);
+    createRecord: function(modelClass, record) {
+        var name = modelClass.getName();
+        if(this.store[name]) {
+            this.store[name].push(record);
+            record.set('id', this.store[name].length);
+        }
+        return record;
     },
     updateRecord: function() {
         Ember.assert("You must provide a valid updateRecord function for your adapter", false);
@@ -416,6 +482,14 @@ Frzn.FixturesAdapter = Frzn.AbstractAdapter.extend({
     totalProperty: null,
     pageProperty: null
 });
+
+Frzn.InMemoryAdapter.reopenClass({
+    createWithData: function(data) {
+        return Frzn.InMemoryAdapter.create({
+            store: data
+        });
+    }
+})
 
 Frzn.UrlMappingAdapter = Frzn.AbstractAdapter.extend({
     urlMapping: {
