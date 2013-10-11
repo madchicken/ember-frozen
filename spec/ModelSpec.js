@@ -1,5 +1,6 @@
 describe("Frozen Model", function () {
 
+    var Test = Em.Namespace.create({});
     var Model = Frzn.Model, attr = Frzn.attr, hasOne = Frzn.hasOne;
 
     it("Using attr function should create a field of type string if no parameters are given", function () {
@@ -185,4 +186,18 @@ describe("Frozen Model", function () {
         expect(person.get('birthDate').toISOString()).toBe((new Date(1974, 6, 17)).toISOString());
     });
 
+    it('Modifying a child model should mark dirty the parent object', function() {
+        Test.Address = Model.extend({
+            address: attr()
+        });
+        Test.Person = Model.extend({
+            name: attr(),
+            age: attr('number'),
+            address: hasOne(Test.Address)
+        });
+
+        var person = Test.Person.create({name: 'Tom', age: 39, address: {address: 'address string'}});
+        person.set('address.address', 'changed address string');
+        expect(person.isDirty()).toBeTruthy();
+    });
 });

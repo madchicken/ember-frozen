@@ -30,7 +30,6 @@
                 } else {
                     value = this.get(path);
                     if(options.isRelationship && !options.embedded) {
-                        console.log('Resolving relationship')
                         value.set('content', options.destination.find(this.get('_data.'+key+'.id'))); //TODO: fix for generic id mapping needed
                     }
                 }
@@ -164,12 +163,6 @@
     });
 
     var BelongsToRelationship = Ember.ObjectProxy.extend(Relationship, {
-        init: function() {
-            this._super();
-            this['get' + this.get('mappedBy')] = function() {
-                return "yo";
-            }
-        }
     });
 
     var relationships = {
@@ -224,6 +217,7 @@
                 if(options.isRelationship) {
                     //For relationships we create a wrapper object using Ember proxies
                     var rel = relationships[options.relationshipType].create({
+                        type: options.relationshipType,
                         options: options
                     });
                     this.set('_relationships.' + name, rel);
@@ -277,8 +271,23 @@
             var dirtyAttributes = this.get('_dirtyAttributes');
             if(attr !== undefined) {
                 return !Ember.isEmpty(dirtyAttributes) && (dirtyAttributesindexOf(attr) != -1);
+            } else {
+                var dirty = false;
+                var relationships = this.get('_relationships');
+                for(var relname in relationships) {
+                    if(relationships.hasOwnProperty(relname)) {
+                        var rel = relationships[relname];
+                        if(rel.get('type') == 'hasOne' || rel.get('type') == 'belongsTo') {
+                            dirty |= rel.get('content').isDirty();
+                        } else if(rel.get('type') == 'hasMany') {
+                            dirty |= rel.get('content').reduce(function(previousValue, item) {
+                                return previousValue |= item.isDirty();
+                            }, false);
+                        }
+                    }
+                }
+                return dirty || !Ember.isEmpty(dirtyAttributes);
             }
-            return !Ember.isEmpty(dirtyAttributes);
         },
 
         commit: function() {
