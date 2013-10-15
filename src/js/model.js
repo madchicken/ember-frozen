@@ -111,6 +111,18 @@
         }
     }));
 
+    Frzn.registerConverter('boolean', SimpleConverter.extend({
+        convert: function(value) {
+            return !!value;
+        }
+    }));
+
+    Frzn.registerConverter('object', SimpleConverter.extend({
+        convert: function(value) {
+            return value;
+        }
+    }));
+
     Frzn.registerConverter('number', SimpleConverter.extend({
         convert: function(value) {
             if(value !== null && value !== undefined) {
@@ -176,7 +188,6 @@
         isLoaded: false,
         isSaved: false,
         isDeleted: false,
-        isError: false,
         url: null,
         errors: null,
 
@@ -314,6 +325,10 @@
 
         remove: function() {
             return this.constructor.adapter.deleteRecord(this.constructor, this);
+        },
+
+        reload: function() {
+            return this.constructor.adapter.reloadRecord(this.constructor, this);
         }
     });
 

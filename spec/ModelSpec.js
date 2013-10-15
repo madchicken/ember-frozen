@@ -134,6 +134,29 @@ describe("Frozen Model", function () {
         expect(typeof person.get('age')).toBe('number');
     });
 
+    it('Defining an attribute as boolean and saving it using a string, should result in a value of true or false', function() {
+        var MyModel = Model.extend({
+            name: attr(),
+            enabled: attr('boolean')
+        });
+
+        var person = MyModel.create({name: 'John'});
+        person.set('enabled', 'yes');
+        expect(person.get('enabled')).toBe(true);
+    });
+
+    it('When defining an attribute of type object, data assigned to the field should be left unmodified by the converter', function() {
+        var MyModel = Model.extend({
+            name: attr(),
+            data: attr('object')
+        });
+
+        var person = MyModel.create({name: 'John'});
+        person.set('data', {enabled: true, value: 'a string'});
+        expect(person.get('data').enabled).toBe(true);
+        expect(person.get('data').value).toBe('a string');
+    });
+
     it('Setting a well formatted string for a date type should convert the value in a valid date', function() {
         var MyModel = Model.extend({
             name: attr(),

@@ -114,6 +114,7 @@ Frzn.InMemoryAdapter = Frzn.AbstractAdapter.extend({
         }
         return records;
     },
+
     createRecord: function(modelClass, record) {
         var name = modelClass.getName();
         if(this.store[name]) {
@@ -122,12 +123,15 @@ Frzn.InMemoryAdapter = Frzn.AbstractAdapter.extend({
         }
         return record;
     },
+
     updateRecord: function() {
         Ember.assert("You must provide a valid updateRecord function for your adapter", false);
     },
+
     deleteRecord: function() {
         Ember.assert("You must provide a valid delete function for your adapter", false);
     },
+
     rootProperty: null,
     totalProperty: null,
     pageProperty: null
@@ -142,220 +146,224 @@ Frzn.InMemoryAdapter.reopenClass({
 })
 
 Frzn.UrlMappingAdapter = Frzn.AbstractAdapter.extend({
+    rootPath: '',
+
     urlMapping: {
         find: {
             url: ':resourceURI/:id',
-            method: 'GET'
+            dataType: 'json',
+            type: 'GET'
         },
         findAll: {
             url: ':resourceURI/list',
-            method: 'GET'
+            dataType: 'json',
+            type: 'GET'
         },
         findQuery: {
-            url: ':resourceURI/list',
-            method: 'GET'
+            url: ':resourceURI/list?max=:max&offset=:offset&sort=:sort&',
+            dataType: 'json',
+            type: 'GET'
+        },
+        findIds: {
+            url: ':resourceURI/list?ids=:ids',
+            dataType: 'json',
+            type: 'GET'
         },
         createRecord: {
             url: ':resourceURI/',
-            method: 'POST'
+            dataType: 'json',
+            type: 'POST'
         },
         updateRecord: {
             url: ':resourceURI/:id',
-            method: 'PUT'
+            dataType: 'json',
+            type: 'PUT'
         }
     },
 
-    find: function(id) {
-        var that = this;
-        var model = this.create({});
-        $.ajax({
-            url: this.urlForAction('show') + "/" + id,
-            dataType: 'json',
-            type: "GET",
-
-            beforeSend: function() {
-                model.set('isAjax', true);
-            },
-
-            complete: function() {
-                model.set('isAjax', false);
-            },
-
-            statusCode: {
-                200: function (result) {
-                    console.log("Loaded from server object of type %o: %o", that, result.data);
-                    if(result.data) {
-                        model.setProperties(that.fromJson(result.data));
-                        model.set('_backup', that.create(model));
-                        model.trigger('loaded');
-                        model.resolve(model);
-                    }
-                },
-
-                401: function() {
-                    model.reject(response, type, title)
-                },
-
-                404: function(response, type, title) {
-                    console.log(arguments);
-                    model.set('isError', true);
-                    model.trigger('error', response, type, title);
-                    model.reject(response, type, title)
-                },
-
-                500: function(response, type, title) {
-                    console.log(arguments);
-                    model.set('isError', true);
-                    model.trigger('error', response, type, title);
-                    model.reject(response, type, title)
+    /**
+     * Retrieve the url for a givn action. It performs substitutions in the given string using passed parameters.
+     * @param action - the action you want the url for
+     * @param modelClass - the actual model class
+     * @param params {object=} [params] - Parameters used in url substitution
+     * @returns {string}
+     */
+    setupAjax: function(action, modelClass, params) {
+        var d = this.urlMapping[action];
+        d = d || {url: ':resourceURI/', type: 'GET'};
+        d = Ember.clone(d);
+        d.url = d.url.replace(':resourceURI', modelClass.getName());
+        if(params) {
+            for(var name in params) {
+                if(params.hasOwnProperty(name)) {
+                    d.url = d.url.replace(':'+name, params[name]);
                 }
             }
-        });
-        return model;
+        }
+        if(this.rootPath)
+            d.url = this.rootPath + url;
+        return d;
     },
-    findAll: function() {
-        data =  data || {
-            max:10,
-            offset:0,
-            sort: "lastUpdated",
-            order: "desc"
-        };
-        data =  Ember.Object.create(data);
-        console.log("Loading list of %o using parameters %o", this, data);
-        var sr = SR.create({});
-        $.ajax({
-            url: this.urlForAction('list'),
-            data: data.getJson(),
-            dataType: 'json',
-            statusCode: {
-                200: function (result) {
-                    console.log("Loaded list of %o from server: %o", this, result);
-                    if(result.records) {
-                        var recs = result.records;
-                        recs = this.createItemRecords(recs)
-                        sr.set('content', recs);
-                        sr.set('total', result.total);
-                    }
-                    sr.resolve(sr);
-                }.bind(this),
-                401: function() {
-                },
-                500: function(response, type, title) {
-                    sr.reject(response, type, title);
-                }
-            }
-        });
-        return sr;
-    },
-    findQuery: function() {
-        data =  data || {
-            max:10,
-            offset:0,
-            sort: "lastUpdated",
-            order: "desc"
-        };
-        data =  Ember.Object.create(data);
-        console.log("Loading list of %o using parameters %o", this, data);
-        var sr = SR.create({});
-        $.ajax({
-            url: this.urlForAction('list'),
-            data: data.getJson(),
-            dataType: 'json',
-            statusCode: {
-                200: function (result) {
-                    console.log("Loaded list of %o from server: %o", this, result);
-                    if(result.records) {
-                        var recs = result.records;
-                        recs = this.createItemRecords(recs)
-                        sr.set('content', recs);
-                        sr.set('total', result.total);
-                    }
-                    sr.resolve(sr);
-                }.bind(this),
-                401: function() {
-                },
-                500: function(response, type, title) {
-                    sr.reject(response, type, title);
-                }
-            }
-        });
-        return sr;
-    },
-    createRecord: function() {
-        Ember.assert("You must provide a valid createRecord function for your adapter", false);
-    },
-    updateRecord: function(record) {
-        record._reset();
-        var json = JSON.stringify(record.getJson());
-        var model = this;
-        console.log("Saving object %o", json);
-        $.ajax({
-            url: record.constructor.urlForAction("update"),
-            dataType: 'json',
-            data: json,
-            contentType: 'application/json',
-            type: record.get('id') ? 'PUT' : 'POST',
 
-            beforeSend: function() {
-                model.set('isAjax', true);
-            },
+    find: function(modelClass, record, id) {
+        var resolve = record.resolve;
+        var reject = record.reject;
+        var config = this.setupAjax('find', modelClass, {id: id});
+        $.ajax(Ember.merge(config, {
+                beforeSend: function() {
+                    record.set('isAjax', true);
+                },
 
-            complete: function() {
-                model.set('isAjax', false);
+                complete: function() {
+                    record.set('isAjax', false);
+                },
+
+                success: function(data) {
+                    record.load(data);
+                    record.set('isLoaded', true);
+                    record.trigger('didLoad', record);
+                    resolve(record);
+                },
+
+                error: function(response, type, title) {
+                    record.set('isLoaded', false);
+                    reject(response, type, title);
+                }
+            })
+        );
+        return record;
+    },
+
+    findAll: function(modelClass, records) {
+        var resolve = records.resolve;
+        var reject = records.reject;
+        var config = this.setupAjax('findAll', modelClass);
+        $.ajax(Ember.merge(config, {
+            success: function(data) {
+                records.load(data);
+                resolve(records);
             },
 
             error: function(response, type, title) {
-                var error = JSON.parse(response.responseText).error;
-                model.setProperties(model.get("_backup"));
-                model.set('genericError', [error, type, title]);
-                model.set('messageType', "error");
-                model.reject(model, error, title, type);
+                reject(response, type, title);
+            }
+        }));
+    },
+
+    findQuery: function(modelClass, records, params) {
+        var resolve = records.resolve;
+        var reject = records.reject;
+        var config = this.setupAjax('findQuery', modelClass, params);
+        $.ajax(Ember.merge(config, {
+            data: params,
+            success: function(data) {
+                records.load(data);
+                resolve(records);
             },
 
-            statusCode: {
-
-                200: function (result) {
-                    model.set('errors', null);
-                    model.setProperties(model.constructor.fromJson(result.data));
-                    model.set('isSaved', true);
-                    model.trigger("saved", model);
-                    model.resolve(model);
-                },
-
-                404: function(response, type, title) {
-                    model.discard();
-                    model.set('genericError', ["Not found", type, title])
-                    model.reject(model, "Not found", type, title)
-                },
-
-                422: function (result, type, title) {
-                    model.discard();
-                    var json = JSON.parse(result.responseText);
-                    if(json.errors) {
-                        var errs = json.errors.errors;
-                        var errors = errs.reduce(function(previousValue, item, index, enumerable) {
-                            previousValue[item.field] = item.message;
-                            return previousValue;
-                        }, {});
-                        model.set('errors', errors);
-                    }
-                    var error = JSON.parse(result.responseText).error;
-                    if(error) {
-                        model.set('genericError', [error, type, title]);
-                    }
-                    model.set('messageType', "error");
-                    model.reject(model, "Invalid request", type, title)
-                },
-
-                500: function(response, type, title) {
-                    model.discard();
-                    model.reject(model, "Internal server error", type, title);
-                }
+            error: function(response, type, title) {
+                reject(response, type, title);
             }
-        });
-        return model;
+        }));
     },
-    deleteRecord: function() {
-        Ember.assert("You must provide a valid delete function for your adapter", false);
-    }
+
+    findIds: function(modelClass, records, ids) {
+        var resolve = records.resolve;
+        var reject = records.reject;
+        var config = this.setupAjax('findIds', modelClass, {ids: ids});
+        $.ajax(Ember.merge(config, {
+            success: function(data) {
+                records.load(data);
+                resolve(records);
+            },
+
+            error: function(response, type, title) {
+                reject(response, type, title);
+            }
+        }));
+    },
+
+    createRecord: function(modelClass, record) {
+        var resolve = record.resolve;
+        var reject = record.reject;
+        var config = this.setupAjax('createRecord', modelClass);
+        $.ajax(Ember.merge(config, {
+            success: function(data) {
+                record.load(data);
+                record.set('isSaved', true);
+                record.set('isLoaded', true);
+                record.trigger('didSave', record);
+                resolve(record);
+            },
+
+            error: function(response, type, title) {
+                reject(response, type, title);
+            }
+        }));
+    },
+
+    updateRecord: function(modelClass, record) {
+        var resolve = record.resolve;
+        var reject = record.reject;
+        var config = this.setupAjax('updateRecord', modelClass);
+        $.ajax(Ember.merge(config, {
+            success: function(data) {
+                record.load(data);
+                record.set('isSaved', true);
+                record.set('isLoaded', true);
+                record.trigger('didSave', record);
+                resolve(record);
+            },
+
+            error: function(response, type, title) {
+                record.discard();
+                reject(response, type, title);
+            }
+        }));
+    },
+
+    deleteRecord: function(modelClass, record) {
+        var resolve = record.resolve;
+        var reject = record.reject;
+        var config = this.setupAjax('deleteRecord', modelClass);
+        $.ajax(Ember.merge(config, {
+            success: function(data) {
+                record.set('isDeleted', true);
+                record.trigger('didDelete', record);
+                resolve(record);
+            },
+
+            error: function(response, type, title) {
+                reject(response, type, title);
+            }
+        }));
+    },
+
+    reloadRecord: function(modelClass, record) {
+        var resolve = record.resolve;
+        var reject = record.reject;
+        var config = this.setupAjax('find', modelClass, {id: record.get('id')});
+        record.set('_deferred', Ember.RSVP.defer());
+        $.ajax(Ember.merge(config, {
+            beforeSend: function() {
+                record.set('isAjax', true);
+            },
+
+            complete: function() {
+                record.set('isAjax', false);
+            },
+
+            success: function(data) {
+                record.load(data);
+                record.set('isLoaded', true);
+                record.trigger('didLoad', model);
+                resolve(record);
+            },
+
+            error: function(response, type, title) {
+                record.set('isLoaded', false);
+                reject(response, type, title);
+            }
+        }));
+    },
 });
