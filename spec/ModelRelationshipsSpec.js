@@ -1,5 +1,5 @@
 describe("Frozen Model Relationships", function() {
-    var Test = Ember.Namespace.create({});
+    var Test = Ember.Namespace.create({name: 'Test'});
     var Model = Frzn.Model, attr = Frzn.attr, hasOne = Frzn.hasOne, hasMany = Frzn.hasMany;
 
     it('Defining an hasOne relationship, should create an object field definition for the given model', function() {
@@ -9,6 +9,21 @@ describe("Frozen Model Relationships", function() {
         Test.Person = Model.extend({
             name: attr(),
             address: hasOne(Test.Address)
+        });
+
+        var person = Test.Person.create({name: 'John', address: Test.Address.create({address: 'address string'})});
+        expect(person.get('address').getObjectClass()).toBe(Test.Address);
+        expect(person.get('address')).toBe(person.get('_relationships.address'));
+        expect(person.get('address.address')).toBe('address string');
+    });
+
+    it('Defining an hasOne relationship using a string as type, should create an object field definition for the given model', function() {
+        Test.Address = Model.extend({
+            address: attr()
+        });
+        Test.Person = Model.extend({
+            name: attr(),
+            address: hasOne('Test.Address')
         });
 
         var person = Test.Person.create({name: 'John', address: Test.Address.create({address: 'address string'})});

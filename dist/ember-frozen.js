@@ -227,6 +227,17 @@
                 options = options || {};
                 if(options.isRelationship) {
                     //For relationships we create a wrapper object using Ember proxies
+                    if(typeof options.destination == 'string') {
+                        var dst = Ember.get(options.destination);
+                        if(!dst) {
+                            var s = options.destination.split('.');
+                            if(s.length) {
+                                dst = Ember.Namespace.byName(s[0]).get(s.slice(1).join('.'));
+                            }
+                        }
+                        Ember.assert("You must provide a valid model class", !!dst);
+                        options.destination = dst;
+                    }
                     var rel = relationships[options.relationshipType].create({
                         type: options.relationshipType,
                         options: options
