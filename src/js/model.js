@@ -1,5 +1,5 @@
 "use strict";
-(function () {
+!function () {
 
     var converters = {};
     var Frzn = {
@@ -235,9 +235,9 @@
                                 dst = Ember.Namespace.byName(s[0]).get(s.slice(1).join('.'));
                             }
                         }
-                        Ember.assert("You must provide a valid model class", !!dst);
                         options.destination = dst;
                     }
+                    Ember.assert("You must provide a valid model class for field " + name, options.destination != null && options.destination != undefined);
                     var rel = relationships[options.relationshipType].create({
                         type: options.relationshipType,
                         options: options
@@ -381,4 +381,4 @@
     });
 
     window.Frzn = Frzn;
-})();
+}();

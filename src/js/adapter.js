@@ -28,6 +28,11 @@ Frzn.AbstractAdapter = Ember.Object.extend({
 });
 
 Frzn.RecordArray = Ember.ArrayProxy.extend(Ember.DeferredMixin, {
+    init: function() {
+        this._super();
+        this.set('meta', Em.Object.create({}));
+    },
+
     load: function(data) {
         this.set('content', Em.A([]));
         if(data instanceof Array) {
@@ -155,17 +160,17 @@ Frzn.UrlMappingAdapter = Frzn.AbstractAdapter.extend({
             type: 'GET'
         },
         findAll: {
-            url: ':resourceURI/list',
+            url: ':resourceURI/',
             dataType: 'json',
             type: 'GET'
         },
         findQuery: {
-            url: ':resourceURI/list?max=:max&offset=:offset&sort=:sort&',
+            url: ':resourceURI/',
             dataType: 'json',
             type: 'GET'
         },
         findIds: {
-            url: ':resourceURI/list?ids=:ids',
+            url: ':resourceURI/?ids=:ids',
             dataType: 'json',
             type: 'GET'
         },
@@ -191,8 +196,8 @@ Frzn.UrlMappingAdapter = Frzn.AbstractAdapter.extend({
     setupAjax: function(action, modelClass, params) {
         var d = this.urlMapping[action];
         d = d || {url: ':resourceURI/', type: 'GET'};
-        d = Ember.clone(d);
-        d.url = d.url.replace(':resourceURI', modelClass.getName());
+        d = Ember.copy(d, true);
+        d.url = d.url.replace(':resourceURI', modelClass.url || modelClass.getName());
         if(params) {
             for(var name in params) {
                 if(params.hasOwnProperty(name)) {
@@ -206,142 +211,139 @@ Frzn.UrlMappingAdapter = Frzn.AbstractAdapter.extend({
     },
 
     find: function(modelClass, record, id) {
-        var resolve = record.resolve;
-        var reject = record.reject;
         var config = this.setupAjax('find', modelClass, {id: id});
+        var adapter = this;
         $.ajax(Ember.merge(config, {
-                beforeSend: function() {
-                    record.set('isAjax', true);
-                },
+            beforeSend: function() {
+                record.set('isAjax', true);
+            },
 
-                complete: function() {
-                    record.set('isAjax', false);
-                },
+            complete: function() {
+                record.set('isAjax', false);
+            },
 
-                success: function(data) {
-                    record.load(data);
-                    record.set('isLoaded', true);
-                    record.trigger('didLoad', record);
-                    resolve(record);
-                },
+            success: function(data) {
+                var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
+                record.load(obj);
+                record.set('isLoaded', true);
+                record.trigger('didLoad', record);
+                record.resolve(record);
+            },
 
-                error: function(response, type, title) {
-                    record.set('isLoaded', false);
-                    reject(response, type, title);
-                }
-            })
+            error: function(response, type, title) {
+                record.set('isLoaded', false);
+                record.reject(response, type, title);
+            }
+        })
         );
         return record;
     },
 
     findAll: function(modelClass, records) {
-        var resolve = records.resolve;
-        var reject = records.reject;
         var config = this.setupAjax('findAll', modelClass);
         $.ajax(Ember.merge(config, {
             success: function(data) {
-                records.load(data);
-                resolve(records);
+                var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
+                records.load(obj);
+                records.resolve(records);
             },
 
             error: function(response, type, title) {
-                reject(response, type, title);
+                records.reject(response, type, title);
             }
         }));
+        return records;
     },
 
     findQuery: function(modelClass, records, params) {
-        var resolve = records.resolve;
-        var reject = records.reject;
         var config = this.setupAjax('findQuery', modelClass, params);
         $.ajax(Ember.merge(config, {
             data: params,
             success: function(data) {
-                records.load(data);
-                resolve(records);
+                var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
+                records.load(obj);
+                records.resolve(records);
             },
 
             error: function(response, type, title) {
-                reject(response, type, title);
+                records.reject(response, type, title);
             }
         }));
+        return records;
     },
 
     findIds: function(modelClass, records, ids) {
-        var resolve = records.resolve;
-        var reject = records.reject;
         var config = this.setupAjax('findIds', modelClass, {ids: ids});
         $.ajax(Ember.merge(config, {
             success: function(data) {
-                records.load(data);
-                resolve(records);
+                var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
+                records.load(obj);
+                records.resolve(records);
             },
 
             error: function(response, type, title) {
-                reject(response, type, title);
+                records.reject(response, type, title);
             }
         }));
+        return records;
     },
 
     createRecord: function(modelClass, record) {
-        var resolve = record.resolve;
-        var reject = record.reject;
         var config = this.setupAjax('createRecord', modelClass);
         $.ajax(Ember.merge(config, {
             success: function(data) {
-                record.load(data);
+                var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
+                record.load(obj);
                 record.set('isSaved', true);
                 record.set('isLoaded', true);
                 record.trigger('didSave', record);
-                resolve(record);
+                record.resolve(record);
             },
 
             error: function(response, type, title) {
-                reject(response, type, title);
+                record.reject(response, type, title);
             }
         }));
+        return record;
     },
 
     updateRecord: function(modelClass, record) {
-        var resolve = record.resolve;
-        var reject = record.reject;
         var config = this.setupAjax('updateRecord', modelClass);
         $.ajax(Ember.merge(config, {
             success: function(data) {
-                record.load(data);
+                var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
+                record.load(obj);
                 record.set('isSaved', true);
                 record.set('isLoaded', true);
                 record.trigger('didSave', record);
-                resolve(record);
+                record.resolve(record);
             },
 
             error: function(response, type, title) {
                 record.discard();
-                reject(response, type, title);
+                record.reject(response, type, title);
             }
         }));
+        return record;
     },
 
     deleteRecord: function(modelClass, record) {
-        var resolve = record.resolve;
-        var reject = record.reject;
         var config = this.setupAjax('deleteRecord', modelClass);
         $.ajax(Ember.merge(config, {
             success: function(data) {
                 record.set('isDeleted', true);
                 record.trigger('didDelete', record);
-                resolve(record);
+                record.resolve(record);
             },
 
             error: function(response, type, title) {
-                reject(response, type, title);
+                record.reject(response, type, title);
             }
         }));
+        return record;
     },
 
     reloadRecord: function(modelClass, record) {
-        var resolve = record.resolve;
-        var reject = record.reject;
         var config = this.setupAjax('find', modelClass, {id: record.get('id')});
         record.set('_deferred', Ember.RSVP.defer());
         $.ajax(Ember.merge(config, {
@@ -354,16 +356,18 @@ Frzn.UrlMappingAdapter = Frzn.AbstractAdapter.extend({
             },
 
             success: function(data) {
-                record.load(data);
+                var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
+                record.load(obj);
                 record.set('isLoaded', true);
-                record.trigger('didLoad', model);
-                resolve(record);
+                record.trigger('didLoad', record);
+                record.resolve(record);
             },
 
             error: function(response, type, title) {
                 record.set('isLoaded', false);
-                reject(response, type, title);
+                record.reject(response, type, title);
             }
         }));
-    },
+        return record;
+    }
 });
