@@ -24,7 +24,7 @@
         _didLoadMany: function(data, records) {
             records.load(data);
             if(this.extractMeta && typeof this.extractMeta === 'function') {
-                this.extractMeta(data, this);
+                this.extractMeta(data, records);
             }
             records.resolve(records);
         },
@@ -145,8 +145,7 @@
             var name = modelClass.getName();
             var data = this.store[name].findBy('id', id);
             if(data) {
-                record.load(data);
-                record.resolve(record);
+                this._didLoad(data, record);
             } else {
                 record.reject({
                     errorCode: 404,
@@ -161,8 +160,7 @@
             var name = modelClass.getName();
             if(this.store[name]) {
                 var data = this.store[name];
-                records.load(data);
-                records.resolve(records);
+                this._didLoadMany(data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -180,8 +178,7 @@
                 for(var prop in params) {
                     data = data.filterBy(prop, params[prop]);
                 }
-                records.load(data);
-                records.resolve(records);
+                this._didLoadMany(data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -200,8 +197,7 @@
                     var rec = this.store[name].findBy('id', ids[index]);
                     data.push(rec);
                 }
-                records.load(data);
-                records.resolve(records);
+                this._didLoadMany(data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -215,8 +211,9 @@
         createRecord: function(modelClass, record) {
             var name = modelClass.getName();
             if(this.store[name]) {
-                this.store[name].push(record);
                 record.set('id', this.store[name].length);
+                this.store[name].push(record);
+                this._didCreate(record.toJSON(), record);
             }
             return record;
         },

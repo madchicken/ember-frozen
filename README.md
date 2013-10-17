@@ -59,7 +59,7 @@ var App.Person = Frzn.Model.extend({
 });
 ```
 
-In order to access to your backend, you must use an adapter. Frzn gives you the possibility to define your own adapter by extending
+In order to access to your backend, you must use an adapter. Frozen gives you the possibility to define your own adapter by extending
 Frzn.AbstractAdapter class. By default Frozen library provides some predefined adapters:
 
 * InMemoryAdapter - Stores data in a hash map, useful for tests
