@@ -37,7 +37,9 @@ module.exports = function(grunt) {
                 separator: '\n\n',
                 src: [
                     "<%= dirs.js %>/model.js",
-                    "<%= dirs.js %>/adapter.js"
+                    "<%= dirs.js %>/adapter.js",
+                    "<%= dirs.js %>/urlMappingAdapter",
+                    "<%= dirs.js %>/restAdapter.js"
                 ],
                 dest: "<%= dirs.build %>/ember-frozen.js",
             }
