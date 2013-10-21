@@ -1,9 +1,84 @@
 "use strict";
 !function () {
-
     var converters = {};
+
+    var get = Ember.get, set = Ember.set;
+
+    var setupRelationship = function(model, name, options) {
+        //For relationships we create a wrapper object using Ember proxies
+        if(typeof options.destination == 'string') {
+            var dst = get(options.destination);
+            if(!dst) {
+                var s = options.destination.split('.');
+                if(s.length) {
+                    dst = Ember.Namespace.byName(s[0]).get(s.slice(1).join('.'));
+                }
+            }
+            options.destination = dst;
+        }
+        Ember.assert("You must provide a valid model class for field " + name, options.destination != null && options.destination != undefined);
+        var rel = relationships[options.relationshipType].create({
+            type: options.relationshipType,
+            options: options
+        });
+        set(model, '_relationships.' + name, rel);
+        get(model, '_backup')[name] = rel;
+        set(model, '_data.' + name, rel);
+    }
+
+    /**
+     * Initialize a model field. This function tries to understand what kind of attribute should be
+     * instantiated, along with converters and relationships.
+     *
+     * @param model {Frzn.Model} - the model the field applies to
+     * @param name {string} - the field name
+     * @param options {object=} - options describing the field
+     */
+    var initField = function(model, name, options) {
+        Ember.assert("Field name must not be null", name !== null && name !== undefined && name != "");
+        if(get(model, '_backup').hasOwnProperty(name) === false) {
+            options = options || {};
+            if(options.isRelationship) {
+                setupRelationship(model, name, options)
+            } else {
+                get(model, '_backup')[name] = options.defaultValue;
+                set(model, '_data.' + name, options.defaultValue);
+            }
+            var properties = get(model, '_properties');
+            if(-1 === properties.indexOf(name)) //do not redefine
+                properties.push(name);
+        }
+    };
+    
+    var attr = function (type, options) {
+        type = type || 'string';
+        options = options || {};
+        return function (key, value) {
+            initField(this, key, options);
+            var converter = Frzn.getConverter(type);
+            var path = '_data.' + key;
+            if (arguments.length > 1) {
+                if(options.isRelationship) {
+                    path = '_data.' + key + '.content'; //use wrapped content in Ember proxy object
+                }
+                var oldValue = this.get(path);
+                value = converter.convert(value, options);
+                this.set(path, value);
+                if(oldValue != value)
+                    this._markDirty(key);
+            } else {
+                value = this.get(path);
+                if(options.isRelationship && !options.embedded) {
+                    value.set('content', options.destination.find(this.get('_data.'+key+'.id'))); //TODO: fix for generic id mapping needed
+                }
+            }
+            return value;
+        }.property('_data').cacheable(false).meta({type: type, options: options}); //TODO: cacheable is false to allow more complex get operations. I should avoid this...
+    };
+
     var Frzn = {
-        version: "1.0",
+        version: "0.8.0",
+        
         /**
          * Utility function to define a model attribute
          * @param type The type of attribute. Default to 'string'
@@ -11,31 +86,7 @@
          * @param options An hash describing the attribute. Accepted values are:
          *      defaultValue: a default value for the field when it is not defined (not valid for relationships)
          */
-        attr: function (type, options) {
-            type = type || 'string';
-            options = options || {};
-            return function (key, value) {
-                this._initField(key, options);
-                var converter = Frzn.getConverter(type);
-                var path = '_data.' + key;
-                if (arguments.length > 1) {
-                    if(options.isRelationship) {
-                        path = '_data.' + key + '.content'; //use wrapped content in Ember proxy object
-                    }
-                    var oldValue = this.get(path);
-                    value = converter.convert(value, options);
-                    this.set(path, value);
-                    if(oldValue != value)
-                        this._markDirty(key);
-                } else {
-                    value = this.get(path);
-                    if(options.isRelationship && !options.embedded) {
-                        value.set('content', options.destination.find(this.get('_data.'+key+'.id'))); //TODO: fix for generic id mapping needed
-                    }
-                }
-                return value;
-            }.property('_data').cacheable(false).meta({type: type, options: options});
-        },
+        attr: attr,
 
         hasMany: function (destination, options) {
             options = options || {};
@@ -53,7 +104,7 @@
 
         belongsTo: function(destination, options) {
             options = options || {};
-            options.embedded = options.embedded !== undefined ? options.embedded : true;
+            options.embedded = options.embedded !== undefined ? options.embedded : false;
             Frzn.registerConverter("belongsTo"+destination, ModelConverter.extend({}));
             return Frzn.attr("belongsTo"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'belongsTo', destination: destination}))
         },
@@ -195,7 +246,7 @@
             if(!this.__backup)
                 this.__backup = {};
             return this.__backup;
-        }.property().cacheable(),
+        }.property(),
 
         _data: function() {
             if(!this.__data)
@@ -220,40 +271,6 @@
                 this.__relationships = Em.Object.create({});
             return this.__relationships;
         }.property(),
-
-        _initField: function(name, options) {
-            if(this.get('_backup').hasOwnProperty(name) === false) {
-                Ember.assert("Field name must not be null", name !== null && name !== undefined && name != "");
-                options = options || {};
-                if(options.isRelationship) {
-                    //For relationships we create a wrapper object using Ember proxies
-                    if(typeof options.destination == 'string') {
-                        var dst = Ember.get(options.destination);
-                        if(!dst) {
-                            var s = options.destination.split('.');
-                            if(s.length) {
-                                dst = Ember.Namespace.byName(s[0]).get(s.slice(1).join('.'));
-                            }
-                        }
-                        options.destination = dst;
-                    }
-                    Ember.assert("You must provide a valid model class for field " + name, options.destination != null && options.destination != undefined);
-                    var rel = relationships[options.relationshipType].create({
-                        type: options.relationshipType,
-                        options: options
-                    });
-                    this.set('_relationships.' + name, rel);
-                    this.get('_backup')[name] = rel;
-                    this.set('_data.' + name, rel);
-                } else {
-                    this.get('_backup')[name] = options.defaultValue;
-                    this.set('_data.' + name, options.defaultValue);
-                }
-                var properties = this.get('_properties');
-                if(-1 === properties.indexOf(name)) //do not redefine
-                    properties.push(name);
-            }
-        },
 
         _saveState: function() {
             var properties = this.get('_properties');

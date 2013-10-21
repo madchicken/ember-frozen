@@ -64,6 +64,15 @@ module.exports = function(grunt) {
               message: "Minified and validated with success!"
             }
           }
+        },
+
+        //Specifications
+        jasmine: {
+            src: '<%= dirs.build %>/ember-frozen.js',
+            options: {
+                specs: 'spec/*.spec.js',
+                vendor: ['lib/ember/jquery-1.9.1.js', 'lib/ember/handlebars-1.0.0.js', 'lib/ember/ember-1.0.0.js']
+            }
         }
     });
 
@@ -73,5 +82,7 @@ module.exports = function(grunt) {
 
     // Observe changes, concatenate, minify and validate files
     grunt.registerTask( "default", [ "concat", "uglify", "notify:js" ]);
+    grunt.registerTask( "test", [ "concat", "uglify", "jasmine", "notify:js" ]);
+    grunt.registerTask( "travis", [ "concat", "uglify", "jasmine" ]);
 
 };

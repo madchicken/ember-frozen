@@ -38,6 +38,11 @@
                 url: ':resourceURI/:id',
                 dataType: 'json',
                 type: 'PUT'
+            },
+            deleteRecord: {
+                url: ':resourceURI/:id',
+                dataType: 'json',
+                type: 'DELETE'
             }
          }
          ```
