@@ -59,6 +59,73 @@ var App.Person = Frzn.Model.extend({
 });
 ```
 
+By default Frozen uses embedded relationships. This means that when expressing something like:
+
+```javascript
+Test.Address = Model.extend({
+    id: attr('number),
+    address: attr()
+});
+Test.Person = Model.extend({
+    id: attr('number),
+    name: attr(),
+    age: attr('number'),
+    address: hasOne('Test.Address')
+});
+```
+
+the library expect a JSON like this:
+
+```javascript
+{
+    id: 1,
+    name: 'John',
+    age: 42,
+    address: {
+        id: 1,
+        address: 'An address'
+    }
+}
+```
+
+If you want to use 'lazy' object relationships, simple specify it usint options:
+
+```javascript
+Test.Address = Model.extend({
+    id: attr('number),
+    address: attr()
+});
+Test.Person = Model.extend({
+    id: attr('number),
+    name: attr(),
+    age: attr('number'),
+    address: hasOne('Test.Address', {embedded: false})
+});
+```
+
+so the expected JSON will be:
+
+```javascript
+{
+    id: 1,
+    name: 'John',
+    age: 42,
+    address: {
+        id: 1
+    }
+}
+```
+
+When accessing 'lazy' relationships, Frozen will fetch them for you automatically:
+
+```javascript
+
+    var person = Text.Person({id: 1, name: 'Paul', age: 45, address: {id: 1}});
+    person.get('address'); //will trigger Test.Address.find(1)
+
+```
+
+
 In order to access to your backend, you must use an adapter. Frozen gives you the possibility to define your own adapter by extending
 Frzn.AbstractAdapter class. By default Frozen library provides some predefined adapters:
 

@@ -12,8 +12,8 @@ describe("Frozen Model Relationships", function() {
         });
 
         var person = Test.Person.create({name: 'John', address: Test.Address.create({address: 'address string'})});
-        expect(person.get('address').getObjectClass()).toBe(Test.Address);
-        expect(person.get('address')).toBe(person.get('_relationships.address'));
+        expect(person.getRel('address').getObjectClass()).toBe(Test.Address);
+        expect(person.get('address') instanceof Test.Address).toBe(true);
         expect(person.get('address.address')).toBe('address string');
     });
 
@@ -27,8 +27,8 @@ describe("Frozen Model Relationships", function() {
         });
 
         var person = Test.Person.create({name: 'John', address: Test.Address.create({address: 'address string'})});
-        expect(person.get('address').getObjectClass()).toBe(Test.Address);
-        expect(person.get('address')).toBe(person.get('_relationships.address'));
+        expect(person.getRel('address').getObjectClass()).toBe(Test.Address);
+        expect(person.getRel('address')).toBe(person.get('_relationships.address'));
         expect(person.get('address.address')).toBe('address string');
     });
 
@@ -71,7 +71,7 @@ describe("Frozen Model Relationships", function() {
         });
         expect(person.get('addresses.length')).toBe(2);
         expect(person.get('addresses._options.embedded')).toBeFalsy()
-        expect(person.get('addresses').getObjectClass()).toBe(Test.Address);
+        expect(person.getRel('addresses').getObjectClass()).toBe(Test.Address);
         expect(person.get('addresses').objectAt(0).get('address')).toBe('My home address 1');
     });
 
@@ -92,8 +92,7 @@ describe("Frozen Model Relationships", function() {
             birthDate: (new Date(1974, 6, 17)).toISOString(),
             addresses: {address: 'My home address 1'}
         });
-        expect(person.get('addresses.length')).toBe(0);
-        expect(person.get('addresses.content')).toBeNull();
+        expect(person.get('addresses')).toBeNull();
     });
 
     it('A new object can be added to an hasMany collection using create method', function() {
@@ -113,7 +112,7 @@ describe("Frozen Model Relationships", function() {
             birthDate: (new Date(1974, 6, 17)).toISOString()
         });
         expect(person.get('addresses.length')).toBe(0);
-        person.get('addresses').create({address: 'My home address 1'});
+        person.getRel('addresses').create({address: 'My home address 1'});
         expect(person.get('addresses.length')).toBe(1);
     });
 

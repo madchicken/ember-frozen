@@ -21,10 +21,10 @@
          * @param record
          * @private
          */
-        _didLoadMany: function(data, records) {
+        _didLoadMany: function(data, orginalData, records) {
             records.load(data);
             if(this.extractMeta && typeof this.extractMeta === 'function') {
-                this.extractMeta(data, records);
+                this.extractMeta(orginalData, records);
             }
             records.resolve(records);
         },
@@ -141,9 +141,17 @@
     var InMemoryAdapter = AbstractAdapter.extend({
         store: null,
 
+        initCollection: function(name) {
+            if(!this.store[name]) {
+                this.store[name] = Em.A();
+            }
+            return this;
+        },
+
         find: function(modelClass, record, id) {
             var name = modelClass.getName();
-            var data = this.store[name].findBy('id', id);
+            this.initCollection(name);
+            var data = this.store[name].findBy(modelClass.idProperty, id);
             if(data) {
                 this._didLoad(data, record);
             } else {
@@ -158,9 +166,10 @@
 
         findAll: function(modelClass, records) {
             var name = modelClass.getName();
+            this.initCollection(name);
             if(this.store[name]) {
                 var data = this.store[name];
-                this._didLoadMany(data, records);
+                this._didLoadMany(data, data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -173,12 +182,13 @@
 
         findQuery: function(modelClass, records, params) {
             var name = modelClass.getName();
+            this.initCollection(name);
             if(this.store[name]) {
                 var data = this.store[name];
                 for(var prop in params) {
                     data = data.filterBy(prop, params[prop]);
                 }
-                this._didLoadMany(data, records);
+                this._didLoadMany(data, data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -191,13 +201,14 @@
 
         findIds: function(modelClass, records, ids) {
             var name = modelClass.getName();
+            this.initCollection(name);
             if(this.store[name]) {
                 var data = Em.A([]);
                 for(var index = 0; index < ids.length; index++) {
                     var rec = this.store[name].findBy('id', ids[index]);
                     data.push(rec);
                 }
-                this._didLoadMany(data, records);
+                this._didLoadMany(data, data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -210,6 +221,7 @@
 
         createRecord: function(modelClass, record) {
             var name = modelClass.getName();
+            this.initCollection(name);
             if(this.store[name]) {
                 record.set('id', this.store[name].length);
                 this.store[name].push(record);
@@ -218,17 +230,17 @@
             return record;
         },
 
-        updateRecord: function() {
+        reloadRecord: function(modelClass, record) {
+
+        },
+
+        updateRecord: function(modelClass, record) {
             Ember.assert("You must provide a valid updateRecord function for your adapter", false);
         },
 
-        deleteRecord: function() {
+        deleteRecord: function(modelClass, record) {
             Ember.assert("You must provide a valid delete function for your adapter", false);
-        },
-
-        rootProperty: null,
-        totalProperty: null,
-        pageProperty: null
+        }
     });
 
     InMemoryAdapter.reopenClass({

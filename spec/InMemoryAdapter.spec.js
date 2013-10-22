@@ -5,7 +5,7 @@ describe("Frozen In Memory Adapter", function () {
     Model.reopenClass({
         adapter: Frzn.InMemoryAdapter.create({
             store: {
-                person: [
+                Person: [
                     {id: 1, name: 'Paul', age: 45, address: {id: 1, address: 'address string 1'}},
                     {id: 2, name: 'John', age: 39, address: {id: 2, address: 'address string 2'}},
                     {id: 3, name: 'Michael', age: 27, address: {id: 3, address: 'address string 3'}},
@@ -17,7 +17,7 @@ describe("Frozen In Memory Adapter", function () {
                     {id: 9, name: 'Mel', age: 31, address: {id: 9, address: 'address string 9'}},
                     {id: 10, name: 'Luke', age: 32, address: {id: 10, address: 'address string 10'}}
                 ],
-                address: [
+                Address: [
                     {id: 1, address: 'address string 1'},
                     {id: 2, address: 'address string 2'},
                     {id: 3, address: 'address string 3'},
@@ -68,7 +68,7 @@ describe("Frozen In Memory Adapter", function () {
         expect(typeof person.then).toBe('function');
         expect(person.get('name')).toBe('John');
         expect(person.get('age')).toBe(39);
-        expect(person.get('address.content') instanceof Test.Address).toBeTruthy();
+        expect(person.get('address') instanceof Test.Address).toBeTruthy();
         expect(person.get('address.address')).toBe('address string 2');
     });
 
@@ -87,7 +87,7 @@ describe("Frozen In Memory Adapter", function () {
         var person = persons.objectAt(1);
         expect(person.get('name')).toBe('John');
         expect(person.get('age')).toBe(39);
-        expect(person.get('address.content') instanceof Test.Address).toBeTruthy();
+        expect(person.get('address') instanceof Test.Address).toBeTruthy();
         expect(person.get('address.address')).toBe('address string 2');
     });
 
@@ -124,7 +124,7 @@ describe("Frozen In Memory Adapter", function () {
         var person = persons.objectAt(0);
         expect(person.get('name')).toBe('Johny');
         expect(person.get('age')).toBe(31);
-        expect(person.get('address.content') instanceof Test.Address).toBeTruthy();
+        expect(person.get('address') instanceof Test.Address).toBeTruthy();
         expect(person.get('address.address')).toBe('address string 7');
     });
 

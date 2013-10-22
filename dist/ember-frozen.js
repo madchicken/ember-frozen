@@ -1,8 +1,11 @@
 "use strict";
 !function () {
     var converters = {};
-
     var get = Ember.get, set = Ember.set;
+
+    var getConverter = function(name) {
+        return converters[name] || SimpleConverter.create({});
+    };
 
     var setupRelationship = function(model, name, options) {
         //For relationships we create a wrapper object using Ember proxies
@@ -21,9 +24,10 @@
             type: options.relationshipType,
             options: options
         });
-        set(model, '_relationships.' + name, rel);
-        get(model, '_backup')[name] = rel;
-        set(model, '_data.' + name, rel);
+        var data = get(model, '_data');
+        var rels = get(model, '_relationships');
+        set(rels, name, rel);
+        set(data, name, undefined);
     }
 
     /**
@@ -36,12 +40,11 @@
      */
     var initField = function(model, name, options) {
         Ember.assert("Field name must not be null", name !== null && name !== undefined && name != "");
-        if(get(model, '_backup').hasOwnProperty(name) === false) {
+        if(get(model, '_data').hasOwnProperty(name) === false) {
             options = options || {};
             if(options.isRelationship) {
                 setupRelationship(model, name, options)
             } else {
-                get(model, '_backup')[name] = options.defaultValue;
                 set(model, '_data.' + name, options.defaultValue);
             }
             var properties = get(model, '_properties');
@@ -49,28 +52,75 @@
                 properties.push(name);
         }
     };
-    
+
+    var getValue = function(model, key) {
+        var meta = model.constructor.metaForProperty(key);
+        //prepare for reading value: get _data object
+        var data = get(model, '_data');
+        if(meta.options.isRelationship) {
+            //we are dealing with a relationship, so get its definition first
+            var rel = get(model, '_relationships.' + key);
+            //the real value is the content of the relationship proxy object
+            var value = get(rel, 'content');
+            if(!meta.options.embedded && value.get('isLoaded') !== true) {
+                //this is a not embedded relationship, must fetch the object
+                var dest = meta.options.destination.find(value.get(value.constructor.idProperty))
+                dest.then(function(m) {
+                    //update the content of the relationship
+                    rel.set('content', m);
+                });
+                return dest;
+            } else {
+                return value;
+            }
+        } else {
+            //a plain field was requested, get the value from the _data object
+            return Ember.getWithDefault(data, key, meta.options.defaultValue);
+        }
+    };
+
+    var setValue = function(model, key, value) {
+        var meta = model.constructor.metaForProperty(key);
+        var converter = getConverter(meta.type);
+        value = converter.convert(value, meta.options);
+        //prepare object: get _data and _backup
+        var data = get(model, '_data');
+        var backup = get(model, '_backup');
+        //the old value is the one already present in _data object
+        var oldValue = get(data, key);
+        if(meta.options.isRelationship) {
+            //we are dealing with a relationship, so get its definition first
+            var rel = get(model, '_relationships.' + key);
+            //old value is the content of the relationship object
+            oldValue = get(rel, 'content');
+            //update the value of the relationship
+            set(rel, 'content', value);
+        } else {
+            //update the value of the field
+            set(data, key, value);
+        }
+        //save the old value in the backup object if needed
+        if(!get(backup, key))
+            set(backup, key, oldValue);
+        //mark dirty the field if necessary
+        if(oldValue != value)
+            model._markDirty(key);
+        if(key == model.constructor.idProperty)
+            model[key] = value;
+        return value;
+    };
+
     var attr = function (type, options) {
         type = type || 'string';
         options = options || {};
         return function (key, value) {
             initField(this, key, options);
-            var converter = Frzn.getConverter(type);
-            var path = '_data.' + key;
             if (arguments.length > 1) {
-                if(options.isRelationship) {
-                    path = '_data.' + key + '.content'; //use wrapped content in Ember proxy object
-                }
-                var oldValue = this.get(path);
-                value = converter.convert(value, options);
-                this.set(path, value);
-                if(oldValue != value)
-                    this._markDirty(key);
+                //setter
+                value = setValue(this, key, value);
             } else {
-                value = this.get(path);
-                if(options.isRelationship && !options.embedded) {
-                    value.set('content', options.destination.find(this.get('_data.'+key+'.id'))); //TODO: fix for generic id mapping needed
-                }
+                //getter
+                value = getValue(this, key);
             }
             return value;
         }.property('_data').cacheable(false).meta({type: type, options: options}); //TODO: cacheable is false to allow more complex get operations. I should avoid this...
@@ -113,9 +163,7 @@
             converters[name] = converter.create();
         },
 
-        getConverter: function(name) {
-            return converters[name] || SimpleConverter.create({});
-        }
+        getConverter: getConverter
     };
 
     var SimpleConverter = Ember.Object.extend({
@@ -206,6 +254,28 @@
     var Relationship = Em.Mixin.create({
         getObjectClass: function() {
             return this.get('options.destination');
+        },
+
+        toJSON: function(){
+            var content = this.get('content');
+            if(content) {
+                return content.toJSON();
+            }
+            return null;
+        },
+
+        commit: function() {
+            var content = this.get('content');
+            if(content) {
+                return content.commit();
+            }
+        },
+
+        discard: function() {
+            var content = this.get('content');
+            if(content) {
+                return content.discard();
+            }
         }
     });
 
@@ -219,6 +289,35 @@
             var o = this.get('options.destination').create(data);
             this.pushObject(o);
             return o;
+        },
+
+        toJSON: function() {
+            var content = this.get('content');
+            var data = [];
+            if(content) {
+                content.forEach(function(o) {
+                    data.push(o.toJSON());
+                });
+            }
+            return JSON.stringify(data);
+        },
+
+        commit: function() {
+            var content = this.get('content');
+            if(content) {
+                content.forEach(function(o) {
+                    o.commit();
+                });
+            }
+        },
+
+        discard: function() {
+            var content = this.get('content');
+            if(content) {
+                content.forEach(function(o) {
+                    o.discard();
+                });
+            }
         }
     });
 
@@ -231,7 +330,36 @@
     var relationships = {
         hasOne: HasOneRelationship,
         hasMany: HasManyRelationship,
-        belongsTo: BelongsToRelationship,
+        belongsTo: BelongsToRelationship
+    };
+
+    var saveState = function(model) {
+        var dirtyAttrs = get(model, '_dirtyAttributes');
+        var backup = model.get('_backup');
+        for(var i = 0; i < dirtyAttrs.length; i++) {
+            var p = dirtyAttrs[i];
+            if(model.constructor.metaForProperty(p).options.isRelationship) {
+               model.getRel(p).commit();
+            }
+        }
+        set(model, '_dirtyAttributes', []);
+        set(model, '_backup', {});
+        return model;
+    };
+
+    var discardChanges = function(model) {
+        var backup = model.get('_backup');
+        set(model, '_backup', {});
+        var dirtyAttrs = get(model, '_dirtyAttributes');
+        Ember.setProperties(model, Ember.getProperties(backup, dirtyAttrs));
+        var relationships = get(model, '_relationships');
+        for(var name in relationships) {
+            if(relationships.hasOwnProperty(name)) {
+                model.getRel(name).discard();
+            }
+        }
+        set(model, '_dirtyAttributes', []);
+        return model;
     };
 
     Frzn.Model = Ember.Object.extend(Ember.DeferredMixin, Ember.Evented, {
@@ -242,54 +370,6 @@
         url: null,
         errors: null,
 
-        _backup: function() {
-            if(!this.__backup)
-                this.__backup = {};
-            return this.__backup;
-        }.property(),
-
-        _data: function() {
-            if(!this.__data)
-                this.__data = Em.Object.create({});
-            return this.__data;
-        }.property(),
-
-        _dirtyAttributes: function() {
-            if(!this.__dirtyAttributes)
-                this.__dirtyAttributes = [];
-            return this.__dirtyAttributes;
-        }.property(),
-
-        _properties: function() {
-            if(!this.__properties)
-                this.__properties = Em.A([]);
-            return this.__properties;
-        }.property(),
-
-        _relationships: function() {
-            if(!this.__relationships)
-                this.__relationships = Em.Object.create({});
-            return this.__relationships;
-        }.property(),
-
-        _saveState: function() {
-            var properties = this.get('_properties');
-            var backup = this.get('_backup');
-            for(var i = 0; i < properties.length; i++) {
-                backup[properties[i]] = this.get('_data.' + properties[i]);
-            }
-            this.set('_dirtyAttributes', []);
-            return this;
-        },
-
-        _discardChanges: function() {
-            var backup = this.get('_backup');
-            this.setProperties(backup);
-            this.set('_data', Ember.Object.create(backup));
-            this.set('_dirtyAttributes', []);
-            return this;
-        },
-
         _markDirty: function(field) {
             var dirtyAttributes = this.get('_dirtyAttributes');
             if(-1 === dirtyAttributes.indexOf(field)) {
@@ -299,11 +379,19 @@
 
         init: function() {
             this._super();
-            this._saveState();
+            saveState(this);
+        },
+
+        getId: function() {
+            return this.get(this.constructor.idProperty);
+        },
+
+        getRel: function(rel) {
+            return this.get('_relationships.'+rel);
         },
 
         discard: function () {
-            return this._discardChanges();
+            return discardChanges(this);
         },
 
         isDirty: function(attr) {
@@ -330,11 +418,25 @@
         },
 
         commit: function() {
-            return this._saveState();
+            return saveState(this);
         },
 
         toJSON: function() {
-            return JSON.stringify(this.getProperties(this.get('_properties')));
+            var properties = this.get('_properties');
+            var rel = this.get('_relationships');
+            var keep = [];
+            var related = {};
+            for(var i = 0; i < properties.length; i++) {
+                var meta = this.constructor.metaForProperty(properties[i]);
+                if(meta.options.isRelationship) {
+                    var rel = this.getRel(properties[i]);
+                    related[properties[i]] = JSON.parse(rel.toJSON());
+                } else {
+                    keep.push(properties[i]);
+                }
+            }
+            var base = this.getProperties(keep);
+            return JSON.stringify(Ember.merge(base, related));
         },
 
         load: function(data) {
@@ -344,6 +446,8 @@
         },
 
         save: function() {
+            if(this.getId())
+                return this.update();
             return this.constructor.adapter.createRecord(this.constructor, this);
         },
 
@@ -361,15 +465,37 @@
     });
 
     Frzn.Model.reopenClass({
+        idProperty: 'id',
+
+        create: function() {
+            var C = this;
+            this._initProperties([{
+                _backup: {},
+                _data: {},
+                _dirtyAttributes: [],
+                _properties: [],
+                _relationships: {}
+            }]);
+            var instance = new C();
+            if (arguments.length>0) {
+                instance.setProperties(arguments[0]);
+            }
+            instance.commit();
+            return instance
+        },
+
+        _create: Ember.Object.create,
+
         getName: function() {
             var name = this+"";
-            if(name.lastIndexOf(".") != -1) {
+            if(name && name.lastIndexOf(".") != -1) {
                 name = name.substr(name.lastIndexOf(".")+1);
             }
-            return name.toLowerCase();
+            return name;
         },
 
         find: function (id) {
+            Ember.assert("You must provide a valid id when searching for " + this, !!id);
             var record = this.create()
             return this.adapter.find(this, record, id);
         },
@@ -423,10 +549,10 @@
          * @param record
          * @private
          */
-        _didLoadMany: function(data, records) {
+        _didLoadMany: function(data, orginalData, records) {
             records.load(data);
             if(this.extractMeta && typeof this.extractMeta === 'function') {
-                this.extractMeta(data, records);
+                this.extractMeta(orginalData, records);
             }
             records.resolve(records);
         },
@@ -543,9 +669,17 @@
     var InMemoryAdapter = AbstractAdapter.extend({
         store: null,
 
+        initCollection: function(name) {
+            if(!this.store[name]) {
+                this.store[name] = Em.A();
+            }
+            return this;
+        },
+
         find: function(modelClass, record, id) {
             var name = modelClass.getName();
-            var data = this.store[name].findBy('id', id);
+            this.initCollection(name);
+            var data = this.store[name].findBy(modelClass.idProperty, id);
             if(data) {
                 this._didLoad(data, record);
             } else {
@@ -560,9 +694,10 @@
 
         findAll: function(modelClass, records) {
             var name = modelClass.getName();
+            this.initCollection(name);
             if(this.store[name]) {
                 var data = this.store[name];
-                this._didLoadMany(data, records);
+                this._didLoadMany(data, data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -575,12 +710,13 @@
 
         findQuery: function(modelClass, records, params) {
             var name = modelClass.getName();
+            this.initCollection(name);
             if(this.store[name]) {
                 var data = this.store[name];
                 for(var prop in params) {
                     data = data.filterBy(prop, params[prop]);
                 }
-                this._didLoadMany(data, records);
+                this._didLoadMany(data, data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -593,13 +729,14 @@
 
         findIds: function(modelClass, records, ids) {
             var name = modelClass.getName();
+            this.initCollection(name);
             if(this.store[name]) {
                 var data = Em.A([]);
                 for(var index = 0; index < ids.length; index++) {
                     var rec = this.store[name].findBy('id', ids[index]);
                     data.push(rec);
                 }
-                this._didLoadMany(data, records);
+                this._didLoadMany(data, data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -612,6 +749,7 @@
 
         createRecord: function(modelClass, record) {
             var name = modelClass.getName();
+            this.initCollection(name);
             if(this.store[name]) {
                 record.set('id', this.store[name].length);
                 this.store[name].push(record);
@@ -620,17 +758,17 @@
             return record;
         },
 
-        updateRecord: function() {
+        reloadRecord: function(modelClass, record) {
+
+        },
+
+        updateRecord: function(modelClass, record) {
             Ember.assert("You must provide a valid updateRecord function for your adapter", false);
         },
 
-        deleteRecord: function() {
+        deleteRecord: function(modelClass, record) {
             Ember.assert("You must provide a valid delete function for your adapter", false);
-        },
-
-        rootProperty: null,
-        totalProperty: null,
-        pageProperty: null
+        }
     });
 
     InMemoryAdapter.reopenClass({
@@ -696,11 +834,16 @@
          * @property urlMapping
          * @type Object
          */
-        urlMapping: null,
+        urlMapping: function() {
+            return this.urlMapping.reduce(function(o, p) {return Ember.merge(p, o)});
+        }.property(),
+
+        concatendatedProperties: ['urlMapping'],
 
         init: function() {
             this._super();
             Ember.assert("You must provide a valid url map table", this.urlMapping !== null && this.urlMapping !== undefined);
+            Ember.assert("Url map table must be a valid hash object", !$.isEmptyObject(this.urlMapping));
         },
 
         /**
@@ -713,10 +856,15 @@
          * @returns {string}
          */
         setupAjax: function(action, modelClass, params) {
-            var d = this.urlMapping[action];
+            var d = this.get('urlMapping')[action];
             d = d || {url: ':resourceURI/', type: 'GET'};
             d = Ember.copy(d, true);
-            d.url = d.url.replace(':resourceURI', modelClass.url || modelClass.getName());
+            var url = modelClass.url;
+            if(!url) {
+                url = modelClass.getName();
+                url = url.substr(0, 1).toLowerCase() + url.substr(1);
+            }
+            d.url = d.url.replace(':resourceURI', url);
             if(params) {
                 for(var name in params) {
                     if(params.hasOwnProperty(name)) {
@@ -746,11 +894,10 @@
 
                 success: function(data) {
                     var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    this._didLoad(obj, record);
+                    adapter._didLoad(obj, record);
                 },
 
                 error: function(response, type, title) {
-                    record.set('isLoaded', false);
                     record.reject(response, type, title);
                 }
             })
@@ -760,10 +907,11 @@
 
         findAll: function(modelClass, records) {
             var config = this.setupAjax('findAll', modelClass);
+            var adapter = this;
             $.ajax(Ember.merge(config, {
                 success: function(data) {
                     var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    this._didLoadMany(obj, records);
+                    adapter._didLoadMany(obj, data, records);
                 },
 
                 error: function(response, type, title) {
@@ -775,12 +923,12 @@
 
         findQuery: function(modelClass, records, params) {
             var config = this.setupAjax('findQuery', modelClass, params);
+            var adapter = this;
             $.ajax(Ember.merge(config, {
                 data: params,
                 success: function(data) {
                     var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    records.load(obj);
-                    records.resolve(records);
+                    adapter._didLoadMany(obj, data, records);
                 },
 
                 error: function(response, type, title) {
@@ -792,11 +940,11 @@
 
         findIds: function(modelClass, records, ids) {
             var config = this.setupAjax('findIds', modelClass, {ids: ids});
+            var adapter = this;
             $.ajax(Ember.merge(config, {
                 success: function(data) {
                     var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    records.load(obj);
-                    records.resolve(records);
+                    adapter._didLoadMany(obj, data, records);
                 },
 
                 error: function(response, type, title) {
@@ -807,11 +955,21 @@
         },
 
         createRecord: function(modelClass, record) {
-            var config = this.setupAjax('createRecord', modelClass);
+            var config = this.setupAjax('createRecord', modelClass, record.toJSON());
+            var adapter = this;
             $.ajax(Ember.merge(config, {
+                data: record.toJSON(),
+                beforeSend: function() {
+                    record.set('isAjax', true);
+                },
+
+                complete: function() {
+                    record.set('isAjax', false);
+                },
+
                 success: function(data) {
                     var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    this._didCreate(obj, record);
+                    adapter._didCreate(obj, record);
                 },
 
                 error: function(response, type, title) {
@@ -822,38 +980,8 @@
         },
 
         updateRecord: function(modelClass, record) {
-            var config = this.setupAjax('updateRecord', modelClass);
-            $.ajax(Ember.merge(config, {
-                success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    this._didUpdate(data, record);
-                },
-
-                error: function(response, type, title) {
-                    record.discard();
-                    record.reject(response, type, title);
-                }
-            }));
-            return record;
-        },
-
-        deleteRecord: function(modelClass, record) {
-            var config = this.setupAjax('deleteRecord', modelClass);
-            $.ajax(Ember.merge(config, {
-                success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    this._didDelete(obj, record);
-                },
-
-                error: function(response, type, title) {
-                    record.reject(response, type, title);
-                }
-            }));
-            return record;
-        },
-
-        reloadRecord: function(modelClass, record) {
-            var config = this.setupAjax('find', modelClass, {id: record.get('id')});
+            var config = this.setupAjax('updateRecord', modelClass, record.toJSON());
+            var adapter = this;
             record.set('_deferred', Ember.RSVP.defer());
             $.ajax(Ember.merge(config, {
                 beforeSend: function() {
@@ -866,10 +994,57 @@
 
                 success: function(data) {
                     var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    record.load(obj);
-                    record.set('isLoaded', true);
-                    record.trigger('didLoad', record);
-                    record.resolve(record);
+                    adapter._didUpdate(obj, record);
+                },
+
+                error: function(response, type, title) {
+                    record.reject(response, type, title);
+                }
+            }));
+            return record;
+        },
+
+        deleteRecord: function(modelClass, record) {
+            var config = this.setupAjax('deleteRecord', modelClass);
+            var adapter = this;
+            record.set('_deferred', Ember.RSVP.defer());
+            $.ajax(Ember.merge(config, {
+                beforeSend: function() {
+                    record.set('isAjax', true);
+                },
+
+                complete: function() {
+                    record.set('isAjax', false);
+                },
+
+                success: function(data) {
+                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
+                    adapter._didDelete(obj, record);
+                },
+
+                error: function(response, type, title) {
+                    record.reject(response, type, title);
+                }
+            }));
+            return record;
+        },
+
+        reloadRecord: function(modelClass, record) {
+            var config = this.setupAjax('find', modelClass, {id: record.get('id')});
+            record.set('_deferred', Ember.RSVP.defer());
+            var adapter = this;
+            $.ajax(Ember.merge(config, {
+                beforeSend: function() {
+                    record.set('isAjax', true);
+                },
+
+                complete: function() {
+                    record.set('isAjax', false);
+                },
+
+                success: function(data) {
+                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
+                    adapter._didLoad(obj, record);
                 },
 
                 error: function(response, type, title) {
