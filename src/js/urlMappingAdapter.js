@@ -55,7 +55,7 @@
 
         init: function() {
             this._super();
-            Ember.assert("You must provide a valid url map table", this.get('urlMapping') !== null && this.get('urlMapping') !== undefined);
+            Ember.assert("You must provide a valid url map table", this.get('urlMapping') !== null && this.get('urlMapping') !== undefined && !$.isEmptyObject(this.get('urlMapping')));
             Ember.assert("Url map table must be a valid hash object", !$.isEmptyObject(this.get('urlMapping')));
         },
 
