@@ -49,16 +49,14 @@
          * @property urlMapping
          * @type Object
          */
-        urlMapping: function() {
-            return this.urlMapping.reduce(function(o, p) {return Ember.merge(p, o)});
-        }.property(),
+        urlMapping: {},
 
-        concatendatedProperties: ['urlMapping'],
+        concatenatedProperties: ['urlMapping'],
 
         init: function() {
             this._super();
-            Ember.assert("You must provide a valid url map table", this.urlMapping !== null && this.urlMapping !== undefined);
-            Ember.assert("Url map table must be a valid hash object", !$.isEmptyObject(this.urlMapping));
+            Ember.assert("You must provide a valid url map table", this.get('urlMapping') !== null && this.get('urlMapping') !== undefined);
+            Ember.assert("Url map table must be a valid hash object", !$.isEmptyObject(this.get('urlMapping')));
         },
 
         /**
@@ -70,33 +68,45 @@
          * @param params {object=} [params] - Parameters used in url substitution
          * @returns {string}
          */
-        setupAjax: function(action, modelClass, params) {
-            var d = this.get('urlMapping')[action];
-            d = d || {url: ':resourceURI/', type: 'GET'};
-            d = Ember.copy(d, true);
+        setupAjax: function(action, model, params) {
+            params = params || {};
+            var modelClass = model.constructor;
+            model.set('_deferred', Ember.RSVP.defer());
+            if(model instanceof Frzn.RecordArray) {
+                modelClass = model.type;
+            }
+
+            var mapping = this.get('urlMapping').reduce(function(o, p) {return Ember.merge(p, o)});
+            var actionData = mapping[action];
+            Ember.warn("No configuration found for action " + action, !actionData);
+            actionData = actionData || {url: ':resourceURI/', type: 'GET'};
+            actionData = Ember.copy(actionData, true);
             var url = modelClass.url;
             if(!url) {
                 url = modelClass.getName();
                 url = url.substr(0, 1).toLowerCase() + url.substr(1);
             }
-            d.url = d.url.replace(':resourceURI', url);
-            if(params) {
-                for(var name in params) {
-                    if(params.hasOwnProperty(name)) {
-                        d.url = d.url.replace(':'+name, params[name]);
-                    }
+            actionData.url = actionData.url.replace(':resourceURI', url);
+
+            var tokens = actionData.url.match(/:([a-zA-z_-]+)/g);
+            if(tokens && tokens.length) {
+                for(var i = 0; i < tokens.length; i++) {
+                    var k = tokens[i];
+                    var p = k.substr(1); //get rid of the : character
+                    var v = params[p] || model.get(p);
+                    actionData.url = actionData.url.replace(k, v);
                 }
             }
             if(this.rootPath)
-                d.url = this.rootPath + url;
-            return d;
+                actionData.url = this.rootPath + url;
+            return actionData;
         },
 
         /**
          * @inheritDoc
          */
         find: function(modelClass, record, id) {
-            var config = this.setupAjax('find', modelClass, {id: id});
+            var config = this.setupAjax('find', record, {id: id});
             var adapter = this;
             $.ajax(Ember.merge(config, {
                 beforeSend: function() {
@@ -121,7 +131,7 @@
         },
 
         findAll: function(modelClass, records) {
-            var config = this.setupAjax('findAll', modelClass);
+            var config = this.setupAjax('findAll', records);
             var adapter = this;
             $.ajax(Ember.merge(config, {
                 success: function(data) {
@@ -137,7 +147,7 @@
         },
 
         findQuery: function(modelClass, records, params) {
-            var config = this.setupAjax('findQuery', modelClass, params);
+            var config = this.setupAjax('findQuery', records, params);
             var adapter = this;
             $.ajax(Ember.merge(config, {
                 data: params,
@@ -154,7 +164,7 @@
         },
 
         findIds: function(modelClass, records, ids) {
-            var config = this.setupAjax('findIds', modelClass, {ids: ids});
+            var config = this.setupAjax('findIds', records, {ids: ids});
             var adapter = this;
             $.ajax(Ember.merge(config, {
                 success: function(data) {
@@ -170,7 +180,7 @@
         },
 
         createRecord: function(modelClass, record) {
-            var config = this.setupAjax('createRecord', modelClass, record.toJSON());
+            var config = this.setupAjax('createRecord', record, record.toJSON());
             var adapter = this;
             $.ajax(Ember.merge(config, {
                 data: record.toJSON(),
@@ -195,9 +205,8 @@
         },
 
         updateRecord: function(modelClass, record) {
-            var config = this.setupAjax('updateRecord', modelClass, record.toJSON());
+            var config = this.setupAjax('updateRecord', record, record.toJSON());
             var adapter = this;
-            record.set('_deferred', Ember.RSVP.defer());
             $.ajax(Ember.merge(config, {
                 beforeSend: function() {
                     record.set('isAjax', true);
@@ -220,9 +229,8 @@
         },
 
         deleteRecord: function(modelClass, record) {
-            var config = this.setupAjax('deleteRecord', modelClass);
+            var config = this.setupAjax('deleteRecord', record);
             var adapter = this;
-            record.set('_deferred', Ember.RSVP.defer());
             $.ajax(Ember.merge(config, {
                 beforeSend: function() {
                     record.set('isAjax', true);
@@ -245,8 +253,7 @@
         },
 
         reloadRecord: function(modelClass, record) {
-            var config = this.setupAjax('find', modelClass, {id: record.get('id')});
-            record.set('_deferred', Ember.RSVP.defer());
+            var config = this.setupAjax('find', record, {id: record.get('id')});
             var adapter = this;
             $.ajax(Ember.merge(config, {
                 beforeSend: function() {
