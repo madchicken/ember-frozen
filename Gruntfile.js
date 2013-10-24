@@ -36,6 +36,10 @@ module.exports = function(grunt) {
             dist: {
                 separator: '\n\n',
                 src: [
+                    "<%= dirs.js %>/frozen.js",
+                    "<%= dirs.js %>/converters.js",
+                    "<%= dirs.js %>/relationships.js",
+                    "<%= dirs.js %>/validators.js",
                     "<%= dirs.js %>/model.js",
                     "<%= dirs.js %>/adapter.js",
                     "<%= dirs.js %>/urlMappingAdapter.js",

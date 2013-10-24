@@ -78,7 +78,7 @@
 
             var mapping = this.get('urlMapping').reduce(function(o, p) {return Ember.merge(p, o)});
             var actionData = mapping[action];
-            Ember.warn("No configuration found for action " + action, !actionData);
+            Ember.warn("No configuration found for action " + action, actionData !== undefined);
             actionData = actionData || {url: ':resourceURI/', type: 'GET'};
             actionData = Ember.copy(actionData, true);
             var url = modelClass.url;

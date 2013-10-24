@@ -170,6 +170,8 @@ describe("Frozen Model", function () {
             expect(Frzn.getConverter('number')).not.toBeUndefined();
             expect(Frzn.getConverter('date')).not.toBeUndefined();
             expect(Frzn.getConverter('object')).not.toBeUndefined();
+            expect(Frzn.getConverter('model')).not.toBeUndefined();
+            expect(Frzn.getConverter('modelArray')).not.toBeUndefined();
         });
 
         it('Defining an attribute as number and saving it using a string, should result in a number', function() {

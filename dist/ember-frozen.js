@@ -1,180 +1,35 @@
-"use strict";
-!function () {
+"use strict"
+!function(){
+    window.Frzn = Ember.Object.extend({
+        version: '0.8.1'
+    });
+}();
+"use strict"
+!function() {
     var converters = {};
     var get = Ember.get, set = Ember.set;
 
     var getConverter = function(name) {
-        return converters[name] || SimpleConverter.create({});
+        return converters[name] || SimpleConverter.create({name: name});
     };
 
-    var setupRelationship = function(model, name, options) {
-        //For relationships we create a wrapper object using Ember proxies
-        if(typeof options.destination == 'string') {
-            var dst = get(options.destination);
-            if(!dst) {
-                var s = options.destination.split('.');
-                if(s.length) {
-                    dst = Ember.Namespace.byName(s[0]).get(s.slice(1).join('.'));
-                }
-            }
-            options.destination = dst;
-        }
-        Ember.assert("You must provide a valid model class for field " + name, options.destination != null && options.destination != undefined);
-        var rel = relationships[options.relationshipType].create({
-            type: options.relationshipType,
-            options: options
-        });
-        var data = get(model, '_data');
-        var rels = get(model, '_relationships');
-        set(rels, name, rel);
-        set(data, name, undefined);
-    }
-
-    /**
-     * Initialize a model field. This function tries to understand what kind of attribute should be
-     * instantiated, along with converters and relationships.
-     *
-     * @param model {Frzn.Model} - the model the field applies to
-     * @param name {string} - the field name
-     * @param options {object=} - options describing the field
-     */
-    var initField = function(model, name, options) {
-        Ember.assert("Field name must not be null", name !== null && name !== undefined && name != "");
-        if(get(model, '_data').hasOwnProperty(name) === false) {
-            options = options || {};
-            if(options.isRelationship) {
-                setupRelationship(model, name, options)
-            } else {
-                set(model, '_data.' + name, options.defaultValue);
-            }
-            var properties = get(model, '_properties');
-            if(-1 === properties.indexOf(name)) //do not redefine
-                properties.push(name);
-        }
-    };
-
-    var getValue = function(model, key) {
-        var meta = model.constructor.metaForProperty(key);
-        //prepare for reading value: get _data object
-        var data = get(model, '_data');
-        if(meta.options.isRelationship) {
-            //we are dealing with a relationship, so get its definition first
-            var rel = get(model, '_relationships.' + key);
-            //the real value is the content of the relationship proxy object
-            var value = get(rel, 'content');
-            if(!meta.options.embedded && value.get('isLoaded') !== true) {
-                //this is a not embedded relationship, must fetch the object
-                var dest = meta.options.destination.find(value.get(value.constructor.idProperty))
-                dest.then(function(m) {
-                    //update the content of the relationship
-                    rel.set('content', m);
-                });
-                return dest;
-            } else {
-                return value;
-            }
-        } else {
-            //a plain field was requested, get the value from the _data object
-            return Ember.getWithDefault(data, key, meta.options.defaultValue);
-        }
-    };
-
-    var setValue = function(model, key, value) {
-        var meta = model.constructor.metaForProperty(key);
-        var converter = getConverter(meta.type);
-        value = converter.convert(value, meta.options);
-        //prepare object: get _data and _backup
-        var data = get(model, '_data');
-        var backup = get(model, '_backup');
-        //the old value is the one already present in _data object
-        var oldValue = get(data, key);
-        if(meta.options.isRelationship) {
-            //we are dealing with a relationship, so get its definition first
-            var rel = get(model, '_relationships.' + key);
-            //old value is the content of the relationship object
-            oldValue = get(rel, 'content');
-            //update the value of the relationship
-            set(rel, 'content', value);
-        } else {
-            //update the value of the field
-            set(data, key, value);
-        }
-        //save the old value in the backup object if needed
-        if(!get(backup, key))
-            set(backup, key, oldValue);
-        //mark dirty the field if necessary
-        if(oldValue != value)
-            model._markDirty(key);
-        if(key == model.constructor.idProperty)
-            model[key] = value;
-        return value;
-    };
-
-    var attr = function (type, options) {
-        type = type || 'string';
-        options = options || {};
-        return function (key, value) {
-            initField(this, key, options);
-            if (arguments.length > 1) {
-                //setter
-                value = setValue(this, key, value);
-            } else {
-                //getter
-                value = getValue(this, key);
-            }
-            return value;
-        }.property('_data').cacheable(false).meta({type: type, options: options}); //TODO: cacheable is false to allow more complex get operations. I should avoid this...
-    };
-
-    var Frzn = {
-        version: "0.8.0",
-        
-        /**
-         * Utility function to define a model attribute
-         * @param type The type of attribute. Default to 'string'
-         * @returns a computed property for the given attribute
-         * @param options An hash describing the attribute. Accepted values are:
-         *      defaultValue: a default value for the field when it is not defined (not valid for relationships)
-         */
-        attr: attr,
-
-        hasMany: function (destination, options) {
-            options = options || {};
-            options.embedded = options.embedded !== undefined ? options.embedded : true;
-            Frzn.registerConverter("hasMany"+destination, ModelArrayConverter.extend({}));
-            return Frzn.attr("hasMany"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasMany', destination: destination}))
-        },
-
-        hasOne: function(destination, options) {
-            options = options || {};
-            options.embedded = options.embedded !== undefined ? options.embedded : true;
-            Frzn.registerConverter("hasOne"+destination, ModelConverter.extend({}));
-            return Frzn.attr("hasOne"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasOne', destination: destination}))
-        },
-
-        belongsTo: function(destination, options) {
-            options = options || {};
-            options.embedded = options.embedded !== undefined ? options.embedded : false;
-            Frzn.registerConverter("belongsTo"+destination, ModelConverter.extend({}));
-            return Frzn.attr("belongsTo"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'belongsTo', destination: destination}))
-        },
-
-        registerConverter: function(name, converter) {
-            converters[name] = converter.create();
-        },
-
-        getConverter: getConverter
+    var registerConverter = function(name, converter) {
+        converters[name] = converter.create();
     };
 
     var SimpleConverter = Ember.Object.extend({
+        init: function() {
+            Ember.warn("Using Simple converter for " + this.get('name'), true);
+        },
+
         convert: function(value) {
             if(value)
                 return value.valueOf();
             return value;
         }
-    });
+    })
 
-    var ModelConverter = Ember.Object.extend({
+    registerConverter('model', Ember.Object.extend({
         convert: function(value, options) {
             if(value instanceof options.destination)
                 return value;
@@ -186,9 +41,9 @@
             }
             return null;
         }
-    });
+    }));
 
-    var ModelArrayConverter = Ember.Object.extend({
+    registerConverter('modelArray', Ember.Object.extend({
         convert: function(value, options) {
             if(value instanceof Array) {
                 var array = [];
@@ -199,9 +54,9 @@
             }
             return null;
         }
-    });
+    }));
 
-    Frzn.registerConverter('string', SimpleConverter.extend({
+    registerConverter('string', SimpleConverter.extend({
         convert: function(value) {
             if(!Ember.isEmpty(value))
                 return (new String(value)).valueOf();
@@ -210,19 +65,19 @@
         }
     }));
 
-    Frzn.registerConverter('boolean', SimpleConverter.extend({
+    registerConverter('boolean', SimpleConverter.extend({
         convert: function(value) {
             return !!value;
         }
     }));
 
-    Frzn.registerConverter('object', SimpleConverter.extend({
+    registerConverter('object', SimpleConverter.extend({
         convert: function(value) {
             return value;
         }
     }));
 
-    Frzn.registerConverter('number', SimpleConverter.extend({
+    registerConverter('number', SimpleConverter.extend({
         convert: function(value) {
             if(value !== null && value !== undefined) {
                 var num = new Number(value);
@@ -232,7 +87,7 @@
         }
     }));
 
-    Frzn.registerConverter('date', SimpleConverter.extend({
+    registerConverter('date', SimpleConverter.extend({
         convert: function(value) {
             if(value !== null && value !== undefined) {
                 if(typeof value === 'string') {
@@ -250,6 +105,18 @@
             return value;
         }
     }));
+
+    Frzn.reopenClass({
+
+        registerConverter: registerConverter,
+
+        getConverter: getConverter
+
+    })
+}();
+"use strict";
+!function() {
+    var get = Ember.get, set = Ember.set, getConverter = Frzn.getConverter;
 
     var Relationship = Em.Mixin.create({
         getObjectClass: function() {
@@ -333,6 +200,234 @@
         belongsTo: BelongsToRelationship
     };
 
+    Frzn.reopenClass({
+        relationships: relationships,
+
+        hasMany: function (destination, options) {
+            options = options || {};
+            options.embedded = options.embedded !== undefined ? options.embedded : true;
+            Frzn.registerConverter("hasMany"+destination, getConverter('modelArray').constructor.extend({}));
+            return Frzn.attr("hasMany"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasMany', destination: destination}))
+        },
+
+        hasOne: function(destination, options) {
+            options = options || {};
+            options.embedded = options.embedded !== undefined ? options.embedded : true;
+            Frzn.registerConverter("hasOne"+destination, getConverter('model').constructor.extend({}));
+            return Frzn.attr("hasOne"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasOne', destination: destination}))
+        },
+
+        belongsTo: function(destination, options) {
+            options = options || {};
+            options.embedded = options.embedded !== undefined ? options.embedded : false;
+            var ModelConverter = getConverter('model');
+            Frzn.registerConverter("belongsTo"+destination, getConverter('model').constructor.extend({}));
+            return Frzn.attr("belongsTo"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'belongsTo', destination: destination}))
+        }
+    })
+}();
+"use strict";
+!function(){
+
+    var NullableValidator = Ember.Object.extend({
+        validate: function(value) {
+            return value !== null && value !== undefined;
+        }
+    });
+
+    var BlankValidator = Ember.Object.extend({
+        validate: function(value) {
+            return value !== '';
+        }
+    });
+
+    var BlankValidator = Ember.Object.extend({
+        validate: function(value) {
+            return value !== '';
+        }
+    });
+
+    var MinValidator = Ember.Object.extend({
+        validate: function(value) {
+            return value >= this.get('minValue');
+        }
+    });
+
+    var MaxValidator = Ember.Object.extend({
+        validate: function(value) {
+            return value <= this.get('maxValue');
+        }
+    });
+
+    var validators = {
+        nullable: NullableValidator,
+        blank: BlankValidator,
+        min: MinValidator,
+        max: MaxValidator
+    };
+
+
+    Frzn.reopenClass({
+        createValidator: function(name, config) {
+            if(validators[name])
+                return validators[name].create(config);
+            return null;
+        }
+    })
+}();
+"use strict";
+!function () {
+    var get = Ember.get, set = Ember.set, getConverter = Frzn.getConverter, relationships = Frzn.relationships;
+
+    var setupRelationship = function(model, name, options) {
+        //For relationships we create a wrapper object using Ember proxies
+        if(typeof options.destination == 'string') {
+            var dst = get(options.destination);
+            if(!dst) {
+                var s = options.destination.split('.');
+                if(s.length) {
+                    dst = Ember.Namespace.byName(s[0]).get(s.slice(1).join('.'));
+                }
+            }
+            options.destination = dst;
+        }
+        Ember.assert("You must provide a valid model class for field " + name, options.destination != null && options.destination != undefined);
+        var rel = relationships[options.relationshipType].create({
+            type: options.relationshipType,
+            options: options
+        });
+        var data = get(model, '_data');
+        var rels = get(model, '_relationships');
+        set(rels, name, rel);
+        set(data, name, undefined);
+    };
+
+    var initValidators = function(model, name, options) {
+        if(options && !$.isEmptyObject(options)) {
+            var validators = get(model, '_validators');
+            var a = []
+            for(var k in options) {
+                if(options.hasOwnProperty(k)) {
+                    var v = Frzn.createValidator(k, options[k]);
+                    if(v) {
+                        a.push(v);
+                    }
+                }
+            }
+            validators[name] = a;
+        }
+    };
+
+    /**
+     * Initialize a model field. This function tries to understand what kind of attribute should be
+     * instantiated, along with converters and relationships.
+     *
+     * @param model {Frzn.Model} - the model the field applies to
+     * @param name {string} - the field name
+     * @param options {object=} - options describing the field
+     */
+    var initField = function(model, name, options) {
+        Ember.assert("Field name must not be null", name !== null && name !== undefined && name != "");
+        if(get(model, '_data').hasOwnProperty(name) === false) {
+            options = options || {};
+            if(options.isRelationship) {
+                setupRelationship(model, name, options)
+            } else {
+                set(model, '_data.' + name, options.defaultValue);
+            }
+            var properties = get(model, '_properties');
+            if(-1 === properties.indexOf(name)) //do not redefine
+                properties.push(name);
+        }
+        initValidators(model, name, options);
+    };
+
+    var getValue = function(model, key) {
+        var meta = model.constructor.metaForProperty(key);
+        //prepare for reading value: get _data object
+        var data = get(model, '_data');
+        if(meta.options.isRelationship) {
+            //we are dealing with a relationship, so get its definition first
+            var rel = get(model, '_relationships.' + key);
+            //the real value is the content of the relationship proxy object
+            var value = get(rel, 'content');
+            if(!meta.options.embedded && value.get('isLoaded') !== true) {
+                //this is a not embedded relationship, must fetch the object
+                var dest = meta.options.destination.find(value.get(value.constructor.idProperty))
+                dest.then(function(m) {
+                    //update the content of the relationship
+                    rel.set('content', m);
+                });
+                return dest;
+            } else {
+                return value;
+            }
+        } else {
+            //a plain field was requested, get the value from the _data object
+            return Ember.getWithDefault(data, key, meta.options.defaultValue);
+        }
+    };
+
+    var setValue = function(model, key, value) {
+        var meta = model.constructor.metaForProperty(key);
+        var converter = getConverter(meta.type);
+        value = converter.convert(value, meta.options);
+        //prepare object: get _data and _backup
+        var data = get(model, '_data');
+        var backup = get(model, '_backup');
+        //the old value is the one already present in _data object
+        var oldValue = get(data, key);
+        if(meta.options.isRelationship) {
+            //we are dealing with a relationship, so get its definition first
+            var rel = get(model, '_relationships.' + key);
+            //old value is the content of the relationship object
+            oldValue = get(rel, 'content');
+            //update the value of the relationship
+            set(rel, 'content', value);
+        } else {
+            //update the value of the field
+            set(data, key, value);
+        }
+        //save the old value in the backup object if needed
+        if(!get(backup, key))
+            set(backup, key, oldValue);
+        //mark dirty the field if necessary
+        if(oldValue != value)
+            markDirty(model, key);
+        if(key == model.constructor.idProperty)
+            model[key] = value;
+        return value;
+    };
+
+    var attr = function (type, options) {
+        type = type || 'string';
+        options = options || {};
+        return function (key, value) {
+            initField(this, key, options);
+            if (arguments.length > 1) {
+                //setter
+                value = setValue(this, key, value);
+            } else {
+                //getter
+                value = getValue(this, key);
+            }
+            return value;
+        }.property('_data').cacheable(false).meta({type: type, options: options}); //TODO: cacheable is false to allow more complex get operations. I should avoid this...
+    };
+
+    window.Frzn.reopenClass({
+        /**
+         * Utility function to define a model attribute
+         * @param type The type of attribute. Default to 'string'
+         * @returns a computed property for the given attribute
+         * @param options An hash describing the attribute. Accepted values are:
+         *      defaultValue: a default value for the field when it is not defined (not valid for relationships)
+         */
+        attr: attr
+
+    });
+
+
     var saveState = function(model) {
         var dirtyAttrs = get(model, '_dirtyAttributes');
         var backup = model.get('_backup');
@@ -362,6 +457,15 @@
         return model;
     };
 
+
+    var markDirty = function(model, field) {
+        var dirtyAttributes = model.get('_dirtyAttributes');
+        if(-1 === dirtyAttributes.indexOf(field)) {
+            dirtyAttributes.push(field);
+        }
+        return model;
+    };
+
     Frzn.Model = Ember.Object.extend(Ember.DeferredMixin, Ember.Evented, {
         isAjax: false,
         isLoaded: false,
@@ -369,13 +473,6 @@
         isDeleted: false,
         url: null,
         errors: null,
-
-        _markDirty: function(field) {
-            var dirtyAttributes = this.get('_dirtyAttributes');
-            if(-1 === dirtyAttributes.indexOf(field)) {
-                dirtyAttributes.push(field);
-            }
-        },
 
         init: function() {
             this._super();
@@ -461,6 +558,25 @@
 
         reload: function() {
             return this.constructor.adapter.reloadRecord(this.constructor, this);
+        },
+
+        validate: function() {
+            var validators = get(this, '_validators');
+            var errors = [];
+            if(!$.isEmptyObject(validators)) {
+                for(var k in validators) {
+                    if(validators.hasOwnProperty(k)) {
+                        var a = validators[k];
+                        for(var i = 0; i < k.length; k++) {
+                            if(!k[i].validate()) {
+                                errors.push(k);
+                            }
+                        }
+                    }
+                }
+            }
+            set(this, 'errors', errors);
+            return errors.length > 0;
         }
     });
 
@@ -474,7 +590,8 @@
                 _data: {},
                 _dirtyAttributes: [],
                 _properties: [],
-                _relationships: {}
+                _relationships: {},
+                _validators: {}
             }]);
             var instance = new C();
             if (arguments.length>0) {
@@ -863,7 +980,7 @@
 
             var mapping = this.get('urlMapping').reduce(function(o, p) {return Ember.merge(p, o)});
             var actionData = mapping[action];
-            Ember.warn("No configuration found for action " + action, !actionData);
+            Ember.warn("No configuration found for action " + action, actionData !== undefined);
             actionData = actionData || {url: ':resourceURI/', type: 'GET'};
             actionData = Ember.copy(actionData, true);
             var url = modelClass.url;
