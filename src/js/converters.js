@@ -28,7 +28,7 @@
             if(value instanceof options.destination)
                 return value;
             else {
-                if(typeof value === 'object') {
+                if(value && typeof value === 'object') {
                     //try to build a new destination object
                     return options.destination.create(value);
                 }
