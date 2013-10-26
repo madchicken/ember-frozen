@@ -109,8 +109,6 @@
         //mark dirty the field if necessary
         if(oldValue != value)
             markDirty(model, key);
-        if(key == model.constructor.idProperty)
-            model[key] = value;
         return value;
     };
 
