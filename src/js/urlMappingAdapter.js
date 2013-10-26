@@ -99,6 +99,7 @@
             }
             if(this.rootPath)
                 actionData.url = this.rootPath + url;
+
             return actionData;
         },
 
@@ -118,8 +119,7 @@
                 },
 
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didLoad(obj, record);
+                    adapter._didLoad(data, record);
                 },
 
                 error: function(response, type, title) {
@@ -135,8 +135,7 @@
             var adapter = this;
             $.ajax(Ember.merge(config, {
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didLoadMany(obj, data, records);
+                    adapter._didLoadMany(data, records);
                 },
 
                 error: function(response, type, title) {
@@ -152,8 +151,7 @@
             $.ajax(Ember.merge(config, {
                 data: params,
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didLoadMany(obj, data, records);
+                    adapter._didLoadMany(data, records);
                 },
 
                 error: function(response, type, title) {
@@ -168,8 +166,7 @@
             var adapter = this;
             $.ajax(Ember.merge(config, {
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didLoadMany(obj, data, records);
+                    adapter._didLoadMany(data, records);
                 },
 
                 error: function(response, type, title) {
@@ -193,8 +190,7 @@
                 },
 
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didCreate(obj, record);
+                    adapter._didCreate(data, record);
                 },
 
                 error: function(response, type, title) {
@@ -217,8 +213,7 @@
                 },
 
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didUpdate(obj, record);
+                    adapter._didUpdate(data, record);
                 },
 
                 error: function(response, type, title) {
@@ -241,8 +236,7 @@
                 },
 
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didDelete(obj, record);
+                    adapter._didDelete(data, record);
                 },
 
                 error: function(response, type, title) {
@@ -265,8 +259,7 @@
                 },
 
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didLoad(obj, record);
+                    adapter._didLoad(data, record);
                 },
 
                 error: function(response, type, title) {

@@ -2,6 +2,12 @@
     var AbstractAdapter = Ember.Object.extend({
         extractMeta: null,
 
+        discardOnFail: true,
+
+        extractData: function(data, record) {
+            return record.constructor.rootProperty ? data[record.constructor.rootProperty] : data;
+        },
+
         /**
          * After load hook
          * @param data
@@ -9,7 +15,8 @@
          * @private
          */
         _didLoad: function(data, record) {
-            record.load(data);
+            var json = this.extractData(data, record);
+            record.load(json);
             record.set('isLoaded', true);
             record.trigger('didLoad', record);
             record.resolve(record);
@@ -21,10 +28,11 @@
          * @param record
          * @private
          */
-        _didLoadMany: function(data, orginalData, records) {
-            records.load(data);
+        _didLoadMany: function(data, records) {
+            var objs = records.type.rootCollectionProperty ? data[records.type.rootCollectionProperty] : data;
+            records.load(objs);
             if(this.extractMeta && typeof this.extractMeta === 'function') {
-                this.extractMeta(orginalData, records);
+                this.extractMeta(data, records);
             }
             records.resolve(records);
         },
@@ -36,7 +44,8 @@
          * @private
          */
         _didCreate: function(data, record) {
-            record.load(data);
+            var json = this.extractData(data, record);
+            record.load(json);
             record.set('isSaved', true);
             record.set('isLoaded', true);
             record.trigger('didSave', record);
@@ -50,7 +59,8 @@
          * @private
          */
         _didUpdate: function(data, record) {
-            record.load(data);
+            var json = this.extractData(data, record);
+            record.load(json);
             record.set('isSaved', true);
             record.set('isLoaded', true);
             record.trigger('didSave', record);
@@ -64,9 +74,23 @@
          * @private
          */
         _didDelete: function(data, record) {
+            var json = this.extractData(data, record);
+            record.load(json);
             record.set('isDeleted', true);
             record.trigger('didDelete', record);
             record.resolve(record);
+        },
+
+        /**
+         * After update fail hook
+         * @param data
+         * @param record
+         * @private
+         */
+        _didFailUpdate: function(record) {
+            if(this.discardOnFail) {
+                record.discard();
+            }
         },
 
         /**
@@ -112,10 +136,7 @@
 
         deleteRecord: function() {
             Ember.assert("You must provide a valid delete function for your adapter", false);
-        },
-        rootProperty: null,
-        totalProperty: null,
-        pageProperty: null
+        }
     });
 
     var RecordArray = Ember.ArrayProxy.extend(Ember.DeferredMixin, {
@@ -169,7 +190,7 @@
             this.initCollection(name);
             if(this.store[name]) {
                 var data = this.store[name];
-                this._didLoadMany(data, data, records);
+                this._didLoadMany(data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -188,7 +209,7 @@
                 for(var prop in params) {
                     data = data.filterBy(prop, params[prop]);
                 }
-                this._didLoadMany(data, data, records);
+                this._didLoadMany(data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -208,7 +229,7 @@
                     var rec = this.store[name].findBy('id', ids[index]);
                     data.push(rec);
                 }
-                this._didLoadMany(data, data, records);
+                this._didLoadMany(data, records);
             } else {
                 records.reject({
                     errorCode: 404,
