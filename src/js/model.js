@@ -73,18 +73,7 @@
             //we are dealing with a relationship, so get its definition first
             var rel = get(model, '_relationships.' + key);
             //the real value is the content of the relationship proxy object
-            var value = get(rel, 'content');
-            if(!meta.options.embedded && value.get('isLoaded') !== true) {
-                //this is a not embedded relationship, must fetch the object
-                var dest = meta.options.destination.find(value.get(value.constructor.idProperty))
-                dest.then(function(m) {
-                    //update the content of the relationship
-                    rel.set('content', m);
-                });
-                return dest;
-            } else {
-                return value;
-            }
+            return get(rel, 'content');
         } else {
             //a plain field was requested, get the value from the _data object
             return Ember.getWithDefault(data, key, meta.options.defaultValue);

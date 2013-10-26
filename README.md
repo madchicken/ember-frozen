@@ -116,16 +116,6 @@ so the expected JSON will be:
 }
 ```
 
-When accessing 'lazy' relationships, Frozen will fetch them for you automatically:
-
-```javascript
-
-    var person = Text.Person({id: 1, name: 'Paul', age: 45, address: {id: 1}});
-    person.get('address'); //will trigger Test.Address.find(1)
-
-```
-
-
 In order to access to your backend, you must use an adapter. Frozen gives you the possibility to define your own adapter by extending
 Frzn.AbstractAdapter class. By default Frozen library provides some predefined adapters:
 
