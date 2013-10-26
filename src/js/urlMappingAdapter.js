@@ -81,7 +81,7 @@
             Ember.warn("No configuration found for action " + action, actionData !== undefined);
             actionData = actionData || {url: ':resourceURI/', type: 'GET'};
             actionData = Ember.copy(actionData, true);
-            var url = modelClass.url;
+            var url = typeof modelClass.url === 'function' ? modelClass.url() : modelClass.url;
             if(!url) {
                 url = modelClass.getName();
                 url = url.substr(0, 1).toLowerCase() + url.substr(1);
