@@ -31,7 +31,7 @@
             var a = []
             for(var k in options) {
                 if(options.hasOwnProperty(k)) {
-                    var v = Frzn.createValidator(k, options[k]);
+                    var v = Frzn.getValidator(k, options[k]);
                     if(v) {
                         a.push(v);
                     }
