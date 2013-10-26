@@ -94,6 +94,9 @@
             var rel = get(model, '_relationships.' + key);
             //old value is the content of the relationship object
             oldValue = get(rel, 'content');
+            //set the parent object in the content
+            if(value)
+                set(value, '_parent', model);
             //update the value of the relationship
             set(rel, 'content', value);
         } else {
@@ -294,6 +297,10 @@
 
     Frzn.Model.reopenClass({
         idProperty: 'id',
+
+        rootProperty: null,
+
+        rootCollectionProperty: null,
 
         create: function() {
             var C = this;
