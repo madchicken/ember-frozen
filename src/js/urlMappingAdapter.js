@@ -98,7 +98,7 @@
                 }
             }
             if(this.rootPath)
-                actionData.url = this.rootPath + url;
+                actionData.url = this.rootPath + actionData.url;
 
             return actionData;
         },
