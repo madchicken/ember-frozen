@@ -1021,6 +1021,10 @@
 
         init: function() {
             this._super();
+            $.ajaxSetup({
+                contentType: 'application/json; charset=UTF-8',
+                dataType: 'json'
+            });
             Ember.assert("You must provide a valid url map table", this.get('urlMapping') !== null && this.get('urlMapping') !== undefined && !$.isEmptyObject(this.get('urlMapping')));
             Ember.assert("Url map table must be a valid hash object", !$.isEmptyObject(this.get('urlMapping')));
         },
@@ -1045,7 +1049,7 @@
             var mapping = this.get('urlMapping').reduce(function(o, p) {return Ember.merge(p, o)});
             var actionData = mapping[action];
             Ember.warn("No configuration found for action " + action, actionData !== undefined);
-            actionData = actionData || {url: ':resourceURI/', type: 'GET'};
+            actionData = actionData || {url: ':resourceURI/', type: 'GET', dataType: 'json'};
             actionData = Ember.copy(actionData, true);
             var url = typeof modelClass.url === 'function' ? modelClass.url() : modelClass.url;
             if(!url) {
@@ -1170,6 +1174,7 @@
             var config = this.setupAjax('updateRecord', record, record.toJSON());
             var adapter = this;
             $.ajax(Ember.merge(config, {
+                data: record.toJSON(),
                 beforeSend: function() {
                     record.set('isAjax', true);
                 },
