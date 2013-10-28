@@ -79,6 +79,23 @@ describe("Frozen Model Relationships", function() {
             var person = Test.Person.create({name: 'John', address: null});
             expect(person.get('address.address')).toBe(null);
         });
+
+        describe('toJSON', function() {
+            it('Calling toJSON on a model that defines relationships, must return a JSON representation of all the underlying data', function() {
+                Test.Address = Model.extend({
+                    address: attr()
+                });
+                Test.Person = Model.extend({
+                    name: attr(),
+                    age: attr('number'),
+                    address: hasOne(Test.Address)
+                });
+
+                var person = Test.Person.create({name: 'Tom', age: 39, address: {address: 'address string'}});
+                var json = JSON.parse(person.toJSON());
+                expect(json.address.address).toBe('address string');
+            });
+        });
     });
 
 
@@ -158,6 +175,25 @@ describe("Frozen Model Relationships", function() {
 
             var person = Test.Person.create({name: 'John', address: null});
             expect(person.get('address.addresses')).toBe(null);
+        });
+
+        describe('toJSON', function() {
+            it('Calling toJSON on a model that defines relationships, must return a JSON representation of all the underlying data', function() {
+                Test.Address = Model.extend({
+                    address: attr()
+                });
+                Test.Person = Model.extend({
+                    name: attr(),
+                    age: attr('number'),
+                    addresses: hasMany(Test.Address)
+                });
+
+                var person = Test.Person.create({name: 'Tom', age: 39, addresses: [{address: 'address string'}]});
+                expect(person.toJSON()).toBe("{\"name\":\"Tom\",\"age\":39,\"addresses\":[{\"address\":\"address string\"}]}");
+                var json = JSON.parse(person.toJSON());
+                expect(json.addresses.length).toBe(1);
+                expect(json.addresses[0].address).toBe('address string');
+            });
         });
     });
 });

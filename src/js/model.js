@@ -95,10 +95,12 @@
             //old value is the content of the relationship object
             oldValue = get(rel, 'content');
             //set the parent object in the content
-            if(value)
+            if(value) {
                 set(value, '_parent', model);
+            }
             //update the value of the relationship
             set(rel, 'content', value);
+            rel.resolve()
         } else {
             //update the value of the field
             set(data, key, value);
@@ -231,7 +233,7 @@
             return saveState(this);
         },
 
-        toJSON: function() {
+        toPlainObject: function() {
             var properties = this.get('_properties');
             var rel = this.get('_relationships');
             var keep = [];
@@ -240,13 +242,17 @@
                 var meta = this.constructor.metaForProperty(properties[i]);
                 if(meta.options.isRelationship) {
                     var rel = this.getRel(properties[i]);
-                    related[properties[i]] = JSON.parse(rel.toJSON());
+                    related[properties[i]] = rel.toPlainObject();
                 } else {
                     keep.push(properties[i]);
                 }
             }
             var base = this.getProperties(keep);
-            return JSON.stringify(Ember.merge(base, related));
+            return Ember.merge(base, related);
+        },
+
+        toJSON: function() {
+            return JSON.stringify(this.toPlainObject());
         },
 
         load: function(data) {

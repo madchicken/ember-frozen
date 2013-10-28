@@ -246,21 +246,6 @@ describe("Frozen Model", function () {
             expect(json.age).toBe(39);
             expect(json.birthDate).toBe((new Date(1974, 6, 17)).toISOString());
         });
-
-        it('Calling toJSON on a model that defines relationships, must return a JSON representation of all the underlying data', function() {
-            Test.Address = Model.extend({
-                address: attr()
-            });
-            Test.Person = Model.extend({
-                name: attr(),
-                age: attr('number'),
-                address: hasOne(Test.Address)
-            });
-
-            var person = Test.Person.create({name: 'Tom', age: 39, address: {address: 'address string'}});
-            var json = JSON.parse(person.toJSON());
-            expect(json.address.address).toBe('address string');
-        });
     });
 
     it('Loading a model using the load function should populate the object and commit the result', function() {

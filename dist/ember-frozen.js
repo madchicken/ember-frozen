@@ -34,7 +34,7 @@
             if(value instanceof options.destination)
                 return value;
             else {
-                if(typeof value === 'object') {
+                if(value && typeof value === 'object') {
                     //try to build a new destination object
                     return options.destination.create(value);
                 }
@@ -123,10 +123,10 @@
             return this.get('options.destination');
         },
 
-        toJSON: function(){
+        toPlainObject: function(){
             var content = this.get('content');
             if(content) {
-                return content.toJSON();
+                return content.toPlainObject();
             }
             return null;
         },
@@ -143,6 +143,13 @@
             if(content) {
                 return content.discard();
             }
+        },
+
+        resolve: function() {
+            var content = this.get('content');
+            if(content) {
+                content.resolve(content);
+            }
         }
     });
 
@@ -158,15 +165,15 @@
             return o;
         },
 
-        toJSON: function() {
+        toPlainObject: function() {
             var content = this.get('content');
             var data = [];
             if(content) {
                 content.forEach(function(o) {
-                    data.push(o.toJSON());
+                    data.push(o.toPlainObject());
                 });
             }
-            return JSON.stringify(data);
+            return data;
         },
 
         commit: function() {
@@ -183,6 +190,15 @@
             if(content) {
                 content.forEach(function(o) {
                     o.discard();
+                });
+            }
+        },
+
+        resolve: function() {
+            var content = this.get('content');
+            if(content) {
+                content.forEach(function(o) {
+                    o.resolve(o);
                 });
             }
         }
@@ -230,30 +246,46 @@
 !function(){
 
     var NullableValidator = Ember.Object.extend({
+        errorMessage: 'Field {{name}} cannot be null',
         validate: function(value) {
+            if(this.get('value') === true)
+                return true;
             return value !== null && value !== undefined;
         }
     });
 
     var BlankValidator = Ember.Object.extend({
+        errorMessage: 'Field {{name}} cannot be empty',
         validate: function(value) {
+            if(this.get('value') === true)
+                return true;
             return value !== '';
         }
     });
 
-    var BlankValidator = Ember.Object.extend({
+    var EmailValidator = Ember.Object.extend({
+        errorMessage: 'Field {{name}} is not a valid email',
+        regex: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}/,
+
+        init: function() {
+            this.get('regex').compile();
+            this._super();
+        },
+
         validate: function(value) {
-            return value !== '';
+            return this.get('regex').test(value);
         }
     });
 
     var MinValidator = Ember.Object.extend({
+        errorMessage: 'Field {{name}} must be greater or equals to {{value}}',
         validate: function(value) {
             return value >= this.get('minValue');
         }
     });
 
     var MaxValidator = Ember.Object.extend({
+        errorMessage: 'Field {{name}} must be lesser or equals to {{value}}',
         validate: function(value) {
             return value <= this.get('maxValue');
         }
@@ -263,14 +295,25 @@
         nullable: NullableValidator,
         blank: BlankValidator,
         min: MinValidator,
-        max: MaxValidator
+        max: MaxValidator,
+        email: EmailValidator
     };
 
 
     Frzn.reopenClass({
-        createValidator: function(name, config) {
-            if(validators[name])
+        validators: validators,
+
+        addValidator: function(name, clazz){
+            validators[name] = clazz;
+        },
+
+        getValidator: function(name, config) {
+            if(validators[name]) {
+                if(typeof config !== 'object') {
+                    config = {value: config};
+                }
                 return validators[name].create(config);
+            }
             return null;
         }
     })
@@ -308,7 +351,7 @@
             var a = []
             for(var k in options) {
                 if(options.hasOwnProperty(k)) {
-                    var v = Frzn.createValidator(k, options[k]);
+                    var v = Frzn.getValidator(k, options[k]);
                     if(v) {
                         a.push(v);
                     }
@@ -350,18 +393,7 @@
             //we are dealing with a relationship, so get its definition first
             var rel = get(model, '_relationships.' + key);
             //the real value is the content of the relationship proxy object
-            var value = get(rel, 'content');
-            if(!meta.options.embedded && value.get('isLoaded') !== true) {
-                //this is a not embedded relationship, must fetch the object
-                var dest = meta.options.destination.find(value.get(value.constructor.idProperty))
-                dest.then(function(m) {
-                    //update the content of the relationship
-                    rel.set('content', m);
-                });
-                return dest;
-            } else {
-                return value;
-            }
+            return get(rel, 'content');
         } else {
             //a plain field was requested, get the value from the _data object
             return Ember.getWithDefault(data, key, meta.options.defaultValue);
@@ -382,8 +414,13 @@
             var rel = get(model, '_relationships.' + key);
             //old value is the content of the relationship object
             oldValue = get(rel, 'content');
+            //set the parent object in the content
+            if(value) {
+                set(value, '_parent', model);
+            }
             //update the value of the relationship
             set(rel, 'content', value);
+            rel.resolve()
         } else {
             //update the value of the field
             set(data, key, value);
@@ -394,8 +431,6 @@
         //mark dirty the field if necessary
         if(oldValue != value)
             markDirty(model, key);
-        if(key == model.constructor.idProperty)
-            model[key] = value;
         return value;
     };
 
@@ -518,7 +553,7 @@
             return saveState(this);
         },
 
-        toJSON: function() {
+        toPlainObject: function() {
             var properties = this.get('_properties');
             var rel = this.get('_relationships');
             var keep = [];
@@ -527,13 +562,17 @@
                 var meta = this.constructor.metaForProperty(properties[i]);
                 if(meta.options.isRelationship) {
                     var rel = this.getRel(properties[i]);
-                    related[properties[i]] = JSON.parse(rel.toJSON());
+                    related[properties[i]] = rel.toPlainObject();
                 } else {
                     keep.push(properties[i]);
                 }
             }
             var base = this.getProperties(keep);
-            return JSON.stringify(Ember.merge(base, related));
+            return Ember.merge(base, related);
+        },
+
+        toJSON: function() {
+            return JSON.stringify(this.toPlainObject());
         },
 
         load: function(data) {
@@ -582,6 +621,10 @@
 
     Frzn.Model.reopenClass({
         idProperty: 'id',
+
+        rootProperty: null,
+
+        rootCollectionProperty: null,
 
         create: function() {
             var C = this;
@@ -647,6 +690,12 @@
     var AbstractAdapter = Ember.Object.extend({
         extractMeta: null,
 
+        discardOnFail: true,
+
+        extractData: function(data, record) {
+            return record.constructor.rootProperty ? data[record.constructor.rootProperty] : data;
+        },
+
         /**
          * After load hook
          * @param data
@@ -654,7 +703,8 @@
          * @private
          */
         _didLoad: function(data, record) {
-            record.load(data);
+            var json = this.extractData(data, record);
+            record.load(json);
             record.set('isLoaded', true);
             record.trigger('didLoad', record);
             record.resolve(record);
@@ -666,10 +716,11 @@
          * @param record
          * @private
          */
-        _didLoadMany: function(data, orginalData, records) {
-            records.load(data);
+        _didLoadMany: function(data, records) {
+            var objs = records.type.rootCollectionProperty ? data[records.type.rootCollectionProperty] : data;
+            records.load(objs);
             if(this.extractMeta && typeof this.extractMeta === 'function') {
-                this.extractMeta(orginalData, records);
+                this.extractMeta(data, records);
             }
             records.resolve(records);
         },
@@ -681,7 +732,8 @@
          * @private
          */
         _didCreate: function(data, record) {
-            record.load(data);
+            var json = this.extractData(data, record);
+            record.load(json);
             record.set('isSaved', true);
             record.set('isLoaded', true);
             record.trigger('didSave', record);
@@ -695,7 +747,8 @@
          * @private
          */
         _didUpdate: function(data, record) {
-            record.load(data);
+            var json = this.extractData(data, record);
+            record.load(json);
             record.set('isSaved', true);
             record.set('isLoaded', true);
             record.trigger('didSave', record);
@@ -709,9 +762,23 @@
          * @private
          */
         _didDelete: function(data, record) {
+            var json = this.extractData(data, record);
+            record.load(json);
             record.set('isDeleted', true);
             record.trigger('didDelete', record);
             record.resolve(record);
+        },
+
+        /**
+         * After update fail hook
+         * @param data
+         * @param record
+         * @private
+         */
+        _didFailUpdate: function(record) {
+            if(this.discardOnFail) {
+                record.discard();
+            }
         },
 
         /**
@@ -757,10 +824,7 @@
 
         deleteRecord: function() {
             Ember.assert("You must provide a valid delete function for your adapter", false);
-        },
-        rootProperty: null,
-        totalProperty: null,
-        pageProperty: null
+        }
     });
 
     var RecordArray = Ember.ArrayProxy.extend(Ember.DeferredMixin, {
@@ -814,7 +878,7 @@
             this.initCollection(name);
             if(this.store[name]) {
                 var data = this.store[name];
-                this._didLoadMany(data, data, records);
+                this._didLoadMany(data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -833,7 +897,7 @@
                 for(var prop in params) {
                     data = data.filterBy(prop, params[prop]);
                 }
-                this._didLoadMany(data, data, records);
+                this._didLoadMany(data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -853,7 +917,7 @@
                     var rec = this.store[name].findBy('id', ids[index]);
                     data.push(rec);
                 }
-                this._didLoadMany(data, data, records);
+                this._didLoadMany(data, records);
             } else {
                 records.reject({
                     errorCode: 404,
@@ -983,7 +1047,7 @@
             Ember.warn("No configuration found for action " + action, actionData !== undefined);
             actionData = actionData || {url: ':resourceURI/', type: 'GET'};
             actionData = Ember.copy(actionData, true);
-            var url = modelClass.url;
+            var url = typeof modelClass.url === 'function' ? modelClass.url() : modelClass.url;
             if(!url) {
                 url = modelClass.getName();
                 url = url.substr(0, 1).toLowerCase() + url.substr(1);
@@ -1000,7 +1064,8 @@
                 }
             }
             if(this.rootPath)
-                actionData.url = this.rootPath + url;
+                actionData.url = this.rootPath + actionData.url;
+
             return actionData;
         },
 
@@ -1020,8 +1085,7 @@
                 },
 
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didLoad(obj, record);
+                    adapter._didLoad(data, record);
                 },
 
                 error: function(response, type, title) {
@@ -1037,8 +1101,7 @@
             var adapter = this;
             $.ajax(Ember.merge(config, {
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didLoadMany(obj, data, records);
+                    adapter._didLoadMany(data, records);
                 },
 
                 error: function(response, type, title) {
@@ -1054,8 +1117,7 @@
             $.ajax(Ember.merge(config, {
                 data: params,
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didLoadMany(obj, data, records);
+                    adapter._didLoadMany(data, records);
                 },
 
                 error: function(response, type, title) {
@@ -1070,8 +1132,7 @@
             var adapter = this;
             $.ajax(Ember.merge(config, {
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didLoadMany(obj, data, records);
+                    adapter._didLoadMany(data, records);
                 },
 
                 error: function(response, type, title) {
@@ -1095,8 +1156,7 @@
                 },
 
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didCreate(obj, record);
+                    adapter._didCreate(data, record);
                 },
 
                 error: function(response, type, title) {
@@ -1119,8 +1179,7 @@
                 },
 
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didUpdate(obj, record);
+                    adapter._didUpdate(data, record);
                 },
 
                 error: function(response, type, title) {
@@ -1143,8 +1202,7 @@
                 },
 
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didDelete(obj, record);
+                    adapter._didDelete(data, record);
                 },
 
                 error: function(response, type, title) {
@@ -1167,8 +1225,7 @@
                 },
 
                 success: function(data) {
-                    var obj = modelClass.rootProperty ? data[modelClass.rootProperty] : data;
-                    adapter._didLoad(obj, record);
+                    adapter._didLoad(data, record);
                 },
 
                 error: function(response, type, title) {

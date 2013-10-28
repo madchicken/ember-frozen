@@ -7,10 +7,10 @@
             return this.get('options.destination');
         },
 
-        toJSON: function(){
+        toPlainObject: function(){
             var content = this.get('content');
             if(content) {
-                return content.toJSON();
+                return content.toPlainObject();
             }
             return null;
         },
@@ -27,6 +27,13 @@
             if(content) {
                 return content.discard();
             }
+        },
+
+        resolve: function() {
+            var content = this.get('content');
+            if(content) {
+                content.resolve(content);
+            }
         }
     });
 
@@ -42,15 +49,15 @@
             return o;
         },
 
-        toJSON: function() {
+        toPlainObject: function() {
             var content = this.get('content');
             var data = [];
             if(content) {
                 content.forEach(function(o) {
-                    data.push(o.toJSON());
+                    data.push(o.toPlainObject());
                 });
             }
-            return JSON.stringify(data);
+            return data;
         },
 
         commit: function() {
@@ -67,6 +74,15 @@
             if(content) {
                 content.forEach(function(o) {
                     o.discard();
+                });
+            }
+        },
+
+        resolve: function() {
+            var content = this.get('content');
+            if(content) {
+                content.forEach(function(o) {
+                    o.resolve(o);
                 });
             }
         }
