@@ -1,6 +1,7 @@
 {
-  "name": "EmberFrozen",
-  "version": "0.0.1",
+  "name": "ember-frozen",
+  "version": "0.8.1",
+  "main": "dist/ember-frozen.js",
   "ignore": [
     "lib",
     "test",
