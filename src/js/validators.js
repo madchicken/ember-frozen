@@ -55,7 +55,6 @@
         email: EmailValidator
     };
 
-
     Frzn.reopenClass({
         validators: validators,
 
@@ -72,5 +71,46 @@
             }
             return null;
         }
-    })
+    });
+
+    var initValidators = function(model, name, options) {
+        if(options && !$.isEmptyObject(options)) {
+            var validators = get(model, '_validators');
+            var a = []
+            for(var k in options) {
+                if(options.hasOwnProperty(k)) {
+                    var v = Frzn.getValidator(k, options[k]);
+                    if(v) {
+                        a.push(v);
+                    }
+                }
+            }
+            validators[name] = a;
+        }
+    };
+
+    Frzn.Model.reopen({
+        validate: function() {
+            var validators = get(this, '_validators');
+            var errors = [];
+            if(!$.isEmptyObject(validators)) {
+                for(var k in validators) {
+                    if(validators.hasOwnProperty(k)) {
+                        var a = validators[k];
+                        for(var i = 0; i < k.length; k++) {
+                            if(!k[i].validate()) {
+                                errors.push(k);
+                            }
+                        }
+                    }
+                }
+            }
+            set(this, 'errors', errors);
+            return errors.length > 0;
+        },
+
+        initValidators: function(field, options) {
+            return initValidators(this, field, options);
+        }
+    });
 }();

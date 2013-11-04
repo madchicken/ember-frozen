@@ -75,7 +75,7 @@
         setupAjax: function(action, model, params) {
             params = params || {};
             var modelClass = model.constructor;
-            model.set('_deferred', Ember.RSVP.defer());
+            model.resetPromise();
             if(model instanceof Frzn.RecordArray) {
                 modelClass = model.type;
             }

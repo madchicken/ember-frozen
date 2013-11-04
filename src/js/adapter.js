@@ -156,6 +156,11 @@
                 }
             }
             return this;
+        },
+
+        resetPromise: function() {
+            this.set('_deferred', Ember.RSVP.defer());
+            return this;
         }
     });
 

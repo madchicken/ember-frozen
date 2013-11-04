@@ -24,12 +24,12 @@
             createRecord: {
                 url: ':resourceURI/',
                 dataType: 'json',
-                type: 'POST'
+                type: 'PUT'
             },
             updateRecord: {
                 url: ':resourceURI/:id',
                 dataType: 'json',
-                type: 'PUT'
+                type: 'POST'
             },
             deleteRecord: {
                 url: ':resourceURI/:id',

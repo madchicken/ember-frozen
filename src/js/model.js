@@ -25,22 +25,6 @@
         set(data, name, undefined);
     };
 
-    var initValidators = function(model, name, options) {
-        if(options && !$.isEmptyObject(options)) {
-            var validators = get(model, '_validators');
-            var a = []
-            for(var k in options) {
-                if(options.hasOwnProperty(k)) {
-                    var v = Frzn.getValidator(k, options[k]);
-                    if(v) {
-                        a.push(v);
-                    }
-                }
-            }
-            validators[name] = a;
-        }
-    };
-
     /**
      * Initialize a model field. This function tries to understand what kind of attribute should be
      * instantiated, along with converters and relationships.
@@ -62,7 +46,6 @@
             if(-1 === properties.indexOf(name)) //do not redefine
                 properties.push(name);
         }
-        initValidators(model, name, options);
     };
 
     var getValue = function(model, key) {
@@ -127,7 +110,7 @@
                 value = getValue(this, key);
             }
             return value;
-        }.property('_data').cacheable(false).meta({type: type, options: options}); //TODO: cacheable is false to allow more complex get operations. I should avoid this...
+        }.property('_data').meta({type: type, options: options});
     };
 
     window.Frzn.reopenClass({
@@ -181,7 +164,7 @@
         return model;
     };
 
-    Frzn.Model = Ember.Object.extend(Ember.DeferredMixin, Ember.Evented, {
+    Frzn.Model = Ember.Deferred.extend(Ember.Evented, {
         isAjax: false,
         isLoaded: false,
         isSaved: false,
@@ -279,23 +262,13 @@
             return this.constructor.adapter.reloadRecord(this.constructor, this);
         },
 
-        validate: function() {
-            var validators = get(this, '_validators');
-            var errors = [];
-            if(!$.isEmptyObject(validators)) {
-                for(var k in validators) {
-                    if(validators.hasOwnProperty(k)) {
-                        var a = validators[k];
-                        for(var i = 0; i < k.length; k++) {
-                            if(!k[i].validate()) {
-                                errors.push(k);
-                            }
-                        }
-                    }
-                }
-            }
-            set(this, 'errors', errors);
-            return errors.length > 0;
+        fetch: function() {
+            return this.reload();
+        },
+
+        resetPromise: function() {
+            this.set('_deferred', Ember.RSVP.defer());
+            return this;
         }
     });
 

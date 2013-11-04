@@ -23,6 +23,8 @@ Open `SpecRunner.html` in your browser and test with jasmine
 
 ### How to use
 
+## Defining models
+
 Define your models by extending Frzn.Model class:
 ```javascript
 var attr = Frzn.attr, hasMany = Frzn.hasMany;
@@ -38,11 +40,13 @@ var attr = Frzn.attr, hasMany = Frzn.hasMany;
 var App.Person = Frzn.Model.extend({
     name: attr(), //default type for an attribute is 'string'
     age: attr('number'), //data will be converted using Number type
-    birthDate: attr('date'), //data will be converted using Data type
+    birthDate: attr('date'), //data will be converted using Date type
     enabled: attr('boolean'), //stores true or false values
     data: attr('object') //pass-through converter
 });
 ```
+
+##Relationships
 
 You can express model relationships using hasOne, hasMany and belongsTo methods
 
@@ -88,7 +92,7 @@ the library expect a JSON like this:
 }
 ```
 
-If you want to use 'lazy' object relationships, simple specify it usint options:
+If you want to use 'lazy' object relationships, simple specify it using options:
 
 ```javascript
 Test.Address = Model.extend({
@@ -116,12 +120,52 @@ so the expected JSON will be:
 }
 ```
 
-In order to access to your backend, you must use an adapter. Frozen gives you the possibility to define your own adapter by extending
-Frzn.AbstractAdapter class. By default Frozen library provides some predefined adapters:
+Fetching related objects (embedded or not) it's easy: simple use the reload method:
 
-* InMemoryAdapter - Stores data in a hash map, useful for tests
-* UrlMappingAdapter - An adapter that can be configured to map actions to urls (with a given method)
-* RESTAdapter - An extension of UrlMapping adapter, already configured to communicate with a RESTful server
+```javascript
+
+var person = App.Person.find(1);
+var address = person.get('address').reload();
+
+```
+
+## Adapters
+
+In order to access to your backend, you must use an adapter. Frozen gives you the possibility to define your own adapter
+by extending Frzn.AbstractAdapter class. By default Frozen library provides some predefined adapters:
+
+* AbstractAdapter - A basic adapter that doesn't implement any operation. It's used as base class for others adapters.
+* UrlMappingAdapter - An adapter that can be configured to map actions to urls (with a given method).
+* RESTAdapter - An extension of UrlMapping adapter, already configured to communicate with a RESTful server.
+
+When defining a model, you must provide an adapter to be used to communicate with your backend:
+
+```javascript
+
+Test.Person.adapter = Frzn.RESTAdapter.create({});
+
+```
+
+By default RESTAdapter (and UrlMappingAdapter) use the name of the model to infer the url for your resource. So, in the
+previous example the url for the Person resource will be `person/`. If you want customize the url, just use the `url`
+property in the model class:
+
+
+```javascript
+
+Test.Person.adapter = Frzn.RESTAdapter.create({});
+Test.Person.url = 'user/';
+
+```
+
+## Converters
+
+TODO
+
+## Validators
+
+TODO
+
 
 ### License
 

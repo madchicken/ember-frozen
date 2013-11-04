@@ -1,7 +1,7 @@
 "use strict"
 !function(){
     window.Frzn = Ember.Object.extend({
-        version: '0.8.1'
+        version: '0.8.2'
     });
 }();
 "use strict"
@@ -243,82 +243,6 @@
     })
 }();
 "use strict";
-!function(){
-
-    var NullableValidator = Ember.Object.extend({
-        errorMessage: 'Field {{name}} cannot be null',
-        validate: function(value) {
-            if(this.get('value') === true)
-                return true;
-            return value !== null && value !== undefined;
-        }
-    });
-
-    var BlankValidator = Ember.Object.extend({
-        errorMessage: 'Field {{name}} cannot be empty',
-        validate: function(value) {
-            if(this.get('value') === true)
-                return true;
-            return value !== '';
-        }
-    });
-
-    var EmailValidator = Ember.Object.extend({
-        errorMessage: 'Field {{name}} is not a valid email',
-        regex: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}/,
-
-        init: function() {
-            this.get('regex').compile();
-            this._super();
-        },
-
-        validate: function(value) {
-            return this.get('regex').test(value);
-        }
-    });
-
-    var MinValidator = Ember.Object.extend({
-        errorMessage: 'Field {{name}} must be greater or equals to {{value}}',
-        validate: function(value) {
-            return value >= this.get('minValue');
-        }
-    });
-
-    var MaxValidator = Ember.Object.extend({
-        errorMessage: 'Field {{name}} must be lesser or equals to {{value}}',
-        validate: function(value) {
-            return value <= this.get('maxValue');
-        }
-    });
-
-    var validators = {
-        nullable: NullableValidator,
-        blank: BlankValidator,
-        min: MinValidator,
-        max: MaxValidator,
-        email: EmailValidator
-    };
-
-
-    Frzn.reopenClass({
-        validators: validators,
-
-        addValidator: function(name, clazz){
-            validators[name] = clazz;
-        },
-
-        getValidator: function(name, config) {
-            if(validators[name]) {
-                if(typeof config !== 'object') {
-                    config = {value: config};
-                }
-                return validators[name].create(config);
-            }
-            return null;
-        }
-    })
-}();
-"use strict";
 !function () {
     var get = Ember.get, set = Ember.set, getConverter = Frzn.getConverter, relationships = Frzn.relationships;
 
@@ -345,22 +269,6 @@
         set(data, name, undefined);
     };
 
-    var initValidators = function(model, name, options) {
-        if(options && !$.isEmptyObject(options)) {
-            var validators = get(model, '_validators');
-            var a = []
-            for(var k in options) {
-                if(options.hasOwnProperty(k)) {
-                    var v = Frzn.getValidator(k, options[k]);
-                    if(v) {
-                        a.push(v);
-                    }
-                }
-            }
-            validators[name] = a;
-        }
-    };
-
     /**
      * Initialize a model field. This function tries to understand what kind of attribute should be
      * instantiated, along with converters and relationships.
@@ -382,7 +290,6 @@
             if(-1 === properties.indexOf(name)) //do not redefine
                 properties.push(name);
         }
-        initValidators(model, name, options);
     };
 
     var getValue = function(model, key) {
@@ -447,7 +354,7 @@
                 value = getValue(this, key);
             }
             return value;
-        }.property('_data').cacheable(false).meta({type: type, options: options}); //TODO: cacheable is false to allow more complex get operations. I should avoid this...
+        }.property('_data').meta({type: type, options: options});
     };
 
     window.Frzn.reopenClass({
@@ -501,7 +408,7 @@
         return model;
     };
 
-    Frzn.Model = Ember.Object.extend(Ember.DeferredMixin, Ember.Evented, {
+    Frzn.Model = Ember.Deferred.extend(Ember.Evented, {
         isAjax: false,
         isLoaded: false,
         isSaved: false,
@@ -599,23 +506,13 @@
             return this.constructor.adapter.reloadRecord(this.constructor, this);
         },
 
-        validate: function() {
-            var validators = get(this, '_validators');
-            var errors = [];
-            if(!$.isEmptyObject(validators)) {
-                for(var k in validators) {
-                    if(validators.hasOwnProperty(k)) {
-                        var a = validators[k];
-                        for(var i = 0; i < k.length; k++) {
-                            if(!k[i].validate()) {
-                                errors.push(k);
-                            }
-                        }
-                    }
-                }
-            }
-            set(this, 'errors', errors);
-            return errors.length > 0;
+        fetch: function() {
+            return this.reload();
+        },
+
+        resetPromise: function() {
+            this.set('_deferred', Ember.RSVP.defer());
+            return this;
         }
     });
 
@@ -686,6 +583,122 @@
     window.Frzn = Frzn;
 }();
 
+"use strict";
+!function(){
+
+    var NullableValidator = Ember.Object.extend({
+        errorMessage: 'Field {{name}} cannot be null',
+        validate: function(value) {
+            if(this.get('value') === true)
+                return true;
+            return value !== null && value !== undefined;
+        }
+    });
+
+    var BlankValidator = Ember.Object.extend({
+        errorMessage: 'Field {{name}} cannot be empty',
+        validate: function(value) {
+            if(this.get('value') === true)
+                return true;
+            return value !== '';
+        }
+    });
+
+    var EmailValidator = Ember.Object.extend({
+        errorMessage: 'Field {{name}} is not a valid email',
+        regex: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}/,
+
+        init: function() {
+            this.get('regex').compile();
+            this._super();
+        },
+
+        validate: function(value) {
+            return this.get('regex').test(value);
+        }
+    });
+
+    var MinValidator = Ember.Object.extend({
+        errorMessage: 'Field {{name}} must be greater or equals to {{value}}',
+        validate: function(value) {
+            return value >= this.get('minValue');
+        }
+    });
+
+    var MaxValidator = Ember.Object.extend({
+        errorMessage: 'Field {{name}} must be lesser or equals to {{value}}',
+        validate: function(value) {
+            return value <= this.get('maxValue');
+        }
+    });
+
+    var validators = {
+        nullable: NullableValidator,
+        blank: BlankValidator,
+        min: MinValidator,
+        max: MaxValidator,
+        email: EmailValidator
+    };
+
+    Frzn.reopenClass({
+        validators: validators,
+
+        addValidator: function(name, clazz){
+            validators[name] = clazz;
+        },
+
+        getValidator: function(name, config) {
+            if(validators[name]) {
+                if(typeof config !== 'object') {
+                    config = {value: config};
+                }
+                return validators[name].create(config);
+            }
+            return null;
+        }
+    });
+
+    var initValidators = function(model, name, options) {
+        if(options && !$.isEmptyObject(options)) {
+            var validators = get(model, '_validators');
+            var a = []
+            for(var k in options) {
+                if(options.hasOwnProperty(k)) {
+                    var v = Frzn.getValidator(k, options[k]);
+                    if(v) {
+                        a.push(v);
+                    }
+                }
+            }
+            validators[name] = a;
+        }
+    };
+
+    Frzn.Model.reopen({
+        validate: function() {
+            var validators = get(this, '_validators');
+            var errors = [];
+            if(!$.isEmptyObject(validators)) {
+                for(var k in validators) {
+                    if(validators.hasOwnProperty(k)) {
+                        var a = validators[k];
+                        for(var i = 0; i < k.length; k++) {
+                            if(!k[i].validate()) {
+                                errors.push(k);
+                            }
+                        }
+                    }
+                }
+            }
+            set(this, 'errors', errors);
+            return errors.length > 0;
+        },
+
+        initValidators: function(field, options) {
+            return initValidators(this, field, options);
+        }
+    });
+}();
 !function() {
     var AbstractAdapter = Ember.Object.extend({
         extractMeta: null,
@@ -1041,7 +1054,7 @@
         setupAjax: function(action, model, params) {
             params = params || {};
             var modelClass = model.constructor;
-            model.set('_deferred', Ember.RSVP.defer());
+            model.resetPromise();
             if(model instanceof Frzn.RecordArray) {
                 modelClass = model.type;
             }
@@ -1270,12 +1283,12 @@
             createRecord: {
                 url: ':resourceURI/',
                 dataType: 'json',
-                type: 'POST'
+                type: 'PUT'
             },
             updateRecord: {
                 url: ':resourceURI/:id',
                 dataType: 'json',
-                type: 'PUT'
+                type: 'POST'
             },
             deleteRecord: {
                 url: ':resourceURI/:id',
