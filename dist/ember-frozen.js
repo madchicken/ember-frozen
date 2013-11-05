@@ -1,7 +1,7 @@
 "use strict"
 !function(){
     window.Frzn = Ember.Object.extend({
-        version: '0.8.2'
+        version: '0.8.3'
     });
 }();
 "use strict"
@@ -857,6 +857,11 @@
                 }
             }
             return this;
+        },
+
+        resetPromise: function() {
+            this.set('_deferred', Ember.RSVP.defer());
+            return this;
         }
     });
 
@@ -1034,10 +1039,6 @@
 
         init: function() {
             this._super();
-            $.ajaxSetup({
-                contentType: 'application/json; charset=UTF-8',
-                dataType: 'json'
-            });
             Ember.assert("You must provide a valid url map table", this.get('urlMapping') !== null && this.get('urlMapping') !== undefined && !$.isEmptyObject(this.get('urlMapping')));
             Ember.assert("Url map table must be a valid hash object", !$.isEmptyObject(this.get('urlMapping')));
         },
@@ -1262,36 +1263,43 @@
         urlMapping: {
             find: {
                 url: ':resourceURI/:id',
+                contentType: 'application/json; charset=UTF-8',
                 dataType: 'json',
                 type: 'GET'
             },
             findAll: {
                 url: ':resourceURI/',
+                contentType: 'application/json; charset=UTF-8',
                 dataType: 'json',
                 type: 'GET'
             },
             findQuery: {
                 url: ':resourceURI/',
+                contentType: 'application/json; charset=UTF-8',
                 dataType: 'json',
                 type: 'GET'
             },
             findIds: {
                 url: ':resourceURI/?ids=:ids',
+                contentType: 'application/json; charset=UTF-8',
                 dataType: 'json',
                 type: 'GET'
             },
             createRecord: {
                 url: ':resourceURI/',
+                contentType: 'application/json; charset=UTF-8',
                 dataType: 'json',
                 type: 'PUT'
             },
             updateRecord: {
                 url: ':resourceURI/:id',
+                contentType: 'application/json; charset=UTF-8',
                 dataType: 'json',
                 type: 'POST'
             },
             deleteRecord: {
                 url: ':resourceURI/:id',
+                contentType: 'application/json; charset=UTF-8',
                 dataType: 'json',
                 type: 'DELETE'
             }
