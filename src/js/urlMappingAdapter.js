@@ -51,7 +51,7 @@
          */
         urlMapping: {},
 
-        concatenatedProperties: ['urlMapping'],
+        mergedProperties: ['urlMapping'],
 
         init: function() {
             this._super();
@@ -76,7 +76,7 @@
                 modelClass = model.type;
             }
 
-            var mapping = this.get('urlMapping').reduce(function(o, p) {return Ember.merge(p, o)});
+            var mapping = this.get('urlMapping');
             var actionData = mapping[action];
             Ember.warn("No configuration found for action " + action, actionData !== undefined);
             actionData = actionData || {url: ':resourceURI/', type: 'GET', dataType: 'json'};
