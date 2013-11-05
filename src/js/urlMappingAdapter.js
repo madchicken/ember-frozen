@@ -55,10 +55,6 @@
 
         init: function() {
             this._super();
-            $.ajaxSetup({
-                contentType: 'application/json; charset=UTF-8',
-                dataType: 'json'
-            });
             Ember.assert("You must provide a valid url map table", this.get('urlMapping') !== null && this.get('urlMapping') !== undefined && !$.isEmptyObject(this.get('urlMapping')));
             Ember.assert("Url map table must be a valid hash object", !$.isEmptyObject(this.get('urlMapping')));
         },
