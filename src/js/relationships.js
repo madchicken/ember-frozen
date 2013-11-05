@@ -1,4 +1,3 @@
-"use strict";
 !function() {
     var get = Ember.get, set = Ember.set, getConverter = Frzn.getConverter;
 
@@ -34,6 +33,14 @@
             if(content) {
                 content.resolve(content);
             }
+        },
+
+        fetch: function() {
+            var content = this.get('content');
+            if(content) {
+                return content.fetch();
+            }
+            return null;
         }
     });
 
@@ -44,7 +51,7 @@
         },
 
         create: function(data) {
-            var o = this.get('options.destination').create(data);
+            var o = this.getObjectClass().create(data);
             this.pushObject(o);
             return o;
         },
@@ -85,6 +92,18 @@
                     o.resolve(o);
                 });
             }
+            return null;
+        },
+
+        fetch: function() {
+            var content = this.get('content');
+            if(content) {
+                return this.getObjectClass().findIds(content.reduce(function(array, model) {
+                    array.push(model.getId());
+                    return array;
+                }, []));
+            }
+            return null;
         }
     });
 

@@ -1,4 +1,3 @@
-"use strict";
 !function () {
     var get = Ember.get, set = Ember.set, getConverter = Frzn.getConverter, relationships = Frzn.relationships;
 
@@ -56,7 +55,11 @@
             //we are dealing with a relationship, so get its definition first
             var rel = get(model, '_relationships.' + key);
             //the real value is the content of the relationship proxy object
-            return get(rel, 'content');
+            if(meta.options.embedded === false && meta.options.fetch === 'eager') {
+                return rel.fetch();
+            } else {
+                return get(rel, 'content');
+            }
         } else {
             //a plain field was requested, get the value from the _data object
             return Ember.getWithDefault(data, key, meta.options.defaultValue);
@@ -83,7 +86,7 @@
             }
             //update the value of the relationship
             set(rel, 'content', value);
-            rel.resolve()
+            rel.resolve();
         } else {
             //update the value of the field
             set(data, key, value);

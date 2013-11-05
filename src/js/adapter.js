@@ -34,6 +34,9 @@
             if(this.extractMeta && typeof this.extractMeta === 'function') {
                 this.extractMeta(data, records);
             }
+            records.forEach(function(record) {
+                record.resolve(record);
+            });
             records.resolve(records);
         },
 

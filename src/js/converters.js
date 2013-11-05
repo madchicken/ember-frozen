@@ -1,4 +1,3 @@
-"use strict"
 !function() {
     var converters = {};
     var get = Ember.get, set = Ember.set;

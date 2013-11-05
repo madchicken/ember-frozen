@@ -1,10 +1,9 @@
 "use strict"
 !function(){
     window.Frzn = Ember.Object.extend({
-        version: '0.8.3'
+        version: '0.8.4'
     });
 }();
-"use strict"
 !function() {
     var converters = {};
     var get = Ember.get, set = Ember.set;
@@ -114,7 +113,6 @@
 
     })
 }();
-"use strict";
 !function() {
     var get = Ember.get, set = Ember.set, getConverter = Frzn.getConverter;
 
@@ -150,6 +148,14 @@
             if(content) {
                 content.resolve(content);
             }
+        },
+
+        fetch: function() {
+            var content = this.get('content');
+            if(content) {
+                return content.fetch();
+            }
+            return null;
         }
     });
 
@@ -160,7 +166,7 @@
         },
 
         create: function(data) {
-            var o = this.get('options.destination').create(data);
+            var o = this.getObjectClass().create(data);
             this.pushObject(o);
             return o;
         },
@@ -201,6 +207,18 @@
                     o.resolve(o);
                 });
             }
+            return null;
+        },
+
+        fetch: function() {
+            var content = this.get('content');
+            if(content) {
+                return this.getObjectClass().findIds(content.reduce(function(array, model) {
+                    array.push(model.getId());
+                    return array;
+                }, []));
+            }
+            return null;
         }
     });
 
@@ -242,7 +260,6 @@
         }
     })
 }();
-"use strict";
 !function () {
     var get = Ember.get, set = Ember.set, getConverter = Frzn.getConverter, relationships = Frzn.relationships;
 
@@ -300,7 +317,11 @@
             //we are dealing with a relationship, so get its definition first
             var rel = get(model, '_relationships.' + key);
             //the real value is the content of the relationship proxy object
-            return get(rel, 'content');
+            if(meta.options.embedded === false && meta.options.fetch === 'eager') {
+                return rel.fetch();
+            } else {
+                return get(rel, 'content');
+            }
         } else {
             //a plain field was requested, get the value from the _data object
             return Ember.getWithDefault(data, key, meta.options.defaultValue);
@@ -327,7 +348,7 @@
             }
             //update the value of the relationship
             set(rel, 'content', value);
-            rel.resolve()
+            rel.resolve();
         } else {
             //update the value of the field
             set(data, key, value);
@@ -583,7 +604,6 @@
     window.Frzn = Frzn;
 }();
 
-"use strict";
 !function(){
 
     var NullableValidator = Ember.Object.extend({
@@ -735,6 +755,9 @@
             if(this.extractMeta && typeof this.extractMeta === 'function') {
                 this.extractMeta(data, records);
             }
+            records.forEach(function(record) {
+                record.resolve(record);
+            });
             records.resolve(records);
         },
 
