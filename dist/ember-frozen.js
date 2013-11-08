@@ -1,7 +1,7 @@
 "use strict"
 !function(){
     window.Frzn = Ember.Object.extend({
-        version: '0.8.4'
+        version: '0.8.5'
     });
 }();
 !function() {
@@ -1058,7 +1058,7 @@
          */
         urlMapping: {},
 
-        concatenatedProperties: ['urlMapping'],
+        mergedProperties: ['urlMapping'],
 
         init: function() {
             this._super();
@@ -1083,7 +1083,7 @@
                 modelClass = model.type;
             }
 
-            var mapping = this.get('urlMapping').reduce(function(o, p) {return Ember.merge(p, o)});
+            var mapping = this.get('urlMapping');
             var actionData = mapping[action];
             Ember.warn("No configuration found for action " + action, actionData !== undefined);
             actionData = actionData || {url: ':resourceURI/', type: 'GET', dataType: 'json'};
@@ -1104,8 +1104,12 @@
                     actionData.url = actionData.url.replace(k, v);
                 }
             }
-            if(this.rootPath)
-                actionData.url = this.rootPath + actionData.url;
+            if(this.rootPath) {
+                if(typeof this.rootPath === 'function')
+                    actionData.url = this.rootPath() + actionData.url;
+                else
+                    actionData.url = this.rootPath + actionData.url;
+            }
 
             return actionData;
         },

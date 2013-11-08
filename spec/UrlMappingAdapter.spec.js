@@ -21,7 +21,6 @@ describe("Frozen UrlMapping Adapter", function () {
 
             var p = Test.Person.create({});
             expect(Test.Person.adapter.get('urlMapping')).not.toBeFalsy();
-            expect(Ember.isArray(Test.Person.adapter.get('urlMapping'))).toBe(true);
             var conf = Test.Person.adapter.setupAjax('find', p, {id: 42});
             expect(conf.url).toBe('person/42');
         });
@@ -104,6 +103,29 @@ describe("Frozen UrlMapping Adapter", function () {
             expect(conf.url).toBe('person/show/42');
             var conf = Test.Person.adapter.setupAjax('findQuery', p, {name: 'Tom'});
             expect(conf.url).toBe('person/list?name=Tom');
+        });
+
+        it("Should use rootPath when building resource url", function() {
+            Test.Person = Model.extend({
+                name: attr(),
+                age: attr('number')
+            });
+
+            Test.Person.adapter = Frzn.UrlMappingAdapter.create({
+                rootPath: 'root/',
+                urlMapping: {
+                    find: {
+                        url: ':resourceURI/:id',
+                        dataType: 'json',
+                        type: 'GET'
+                    }
+                }
+            });
+
+            var p = Test.Person.create({});
+            expect(Test.Person.adapter.get('urlMapping')).not.toBeFalsy();
+            var conf = Test.Person.adapter.setupAjax('find', p, {id: 42});
+            expect(conf.url).toBe('root/person/42');
         });
     });
 

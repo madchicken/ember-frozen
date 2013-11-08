@@ -97,8 +97,12 @@
                     actionData.url = actionData.url.replace(k, v);
                 }
             }
-            if(this.rootPath)
-                actionData.url = this.rootPath + actionData.url;
+            if(this.rootPath) {
+                if(typeof this.rootPath === 'function')
+                    actionData.url = this.rootPath() + actionData.url;
+                else
+                    actionData.url = this.rootPath + actionData.url;
+            }
 
             return actionData;
         },
