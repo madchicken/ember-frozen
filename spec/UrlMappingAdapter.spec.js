@@ -127,6 +127,29 @@ describe("Frozen UrlMapping Adapter", function () {
             var conf = Test.Person.adapter.setupAjax('find', p, {id: 42});
             expect(conf.url).toBe('root/person/42');
         });
+
+        it("Should use rootPath function when building resource url", function() {
+            Test.Person = Model.extend({
+                name: attr(),
+                age: attr('number')
+            });
+
+            Test.Person.adapter = Frzn.UrlMappingAdapter.create({
+                rootPath: function() { return 'root/' },
+                urlMapping: {
+                    find: {
+                        url: ':resourceURI/:id',
+                        dataType: 'json',
+                        type: 'GET'
+                    }
+                }
+            });
+
+            var p = Test.Person.create({});
+            expect(Test.Person.adapter.get('urlMapping')).not.toBeFalsy();
+            var conf = Test.Person.adapter.setupAjax('find', p, {id: 42});
+            expect(conf.url).toBe('root/person/42');
+        });
     });
 
 });
