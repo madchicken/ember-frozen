@@ -1,9 +1,10 @@
 "use strict"
 !function(){
     window.Frzn = Ember.Object.extend({
-        version: '0.8.5'
+        version: '0.8.6'
     });
 }();
+
 !function() {
     var converters = {};
     var get = Ember.get, set = Ember.set;
