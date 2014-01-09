@@ -66,7 +66,10 @@
 
     registerConverter('boolean', SimpleConverter.extend({
         convert: function(value) {
-            return !!value;
+            if (value  != null)
+                return !!value;
+            else
+                return null;
         }
     }));
 
