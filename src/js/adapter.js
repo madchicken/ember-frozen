@@ -254,7 +254,7 @@
             if(this.store[name]) {
                 record.set('id', this.store[name].length);
                 this.store[name].push(record);
-                this._didCreate(record.toJSON(), record);
+                this._didCreate(record.toPlainObject(), record);
             }
             return record;
         },
