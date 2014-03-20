@@ -311,7 +311,7 @@
         },
 
         find: function (id) {
-            Ember.assert("You must provide a valid id when searching for " + this, !!id);
+            Ember.assert("You must provide a valid id when searching for " + this, (id !== undefined));
             var record = this.create()
             return this.adapter.find(this, record, id);
         },
