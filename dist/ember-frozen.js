@@ -1,7 +1,7 @@
 "use strict"
 !function(){
     window.Frzn = Ember.Object.extend({
-        version: '0.8.6'
+        version: '0.8.7'
     });
 }();
 
@@ -577,7 +577,7 @@
         },
 
         find: function (id) {
-            Ember.assert("You must provide a valid id when searching for " + this, !!id);
+            Ember.assert("You must provide a valid id when searching for " + this, (id !== undefined));
             var record = this.create()
             return this.adapter.find(this, record, id);
         },
@@ -979,7 +979,7 @@
             if(this.store[name]) {
                 record.set('id', this.store[name].length);
                 this.store[name].push(record);
-                this._didCreate(record.toJSON(), record);
+                this._didCreate(record.toPlainObject(), record);
             }
             return record;
         },
