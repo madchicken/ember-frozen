@@ -433,6 +433,13 @@
         return model;
     };
 
+    var guid = function() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+            return v.toString(16);
+        });
+    };
+
     Frzn.Model = Ember.Deferred.extend(Ember.Evented, {
         isAjax: false,
         isLoaded: false,
@@ -440,14 +447,20 @@
         isDeleted: false,
         url: null,
         errors: null,
+        clientId: null,
 
         init: function() {
             this._super();
+            this.clientId = guid();
             saveState(this);
         },
 
         getId: function() {
             return this.get(this.constructor.idProperty);
+        },
+
+        getClientId: function() {
+            return this.clientId;
         },
 
         getRel: function(rel) {

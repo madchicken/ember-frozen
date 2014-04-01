@@ -350,6 +350,17 @@ describe("Frozen Model", function () {
             var person = Test.Person.create({name: 'Tom', age: 39, myid: 42});
             expect(person.getId()).toBe(42);
         });
+
+        it('Should generate a random client id (GUID) when creating a new model', function() {
+            Test.Person = Model.extend({
+                name: attr(),
+                age: attr('number')
+            });
+
+            var person = Test.Person.create({name: 'Tom', age: 39});
+            expect(person.getClientId()).not.toBeNull();
+            expect(person.getClientId().length).toBe('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.length);
+        });
     });
 
     it('It should return the name of the model when calling getName', function() {
