@@ -4,7 +4,7 @@ describe("Frozen Lazy In Memory Adapter", function () {
 
     Model.reopenClass({
         adapter: Frzn.InMemoryAdapter.create({
-            store: {
+            database: {
                 Person: [
                     {id: 1, name: 'Paul', age: 45, address: {id: 1}},
                     {id: 2, name: 'John', age: 39, address: {id: 2}},

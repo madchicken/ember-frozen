@@ -64,7 +64,7 @@
          * This method look in the urlMapping table to find configuration for the requested action.
          * It performs substitutions in the given string using passed parameters.
          * @param action - the action you want the url for
-         * @param modelClass - the actual model class
+         * @param model - the actual model class
          * @param params {object=} [params] - Parameters used in url substitution
          * @returns {string}
          */
@@ -111,26 +111,32 @@
          * @inheritDoc
          */
         find: function(modelClass, record, id) {
+            var recordInStore = this.getFromStore(record);
             var config = this.setupAjax('find', record, {id: id});
             var adapter = this;
-            $.ajax(Ember.merge(config, {
-                beforeSend: function() {
-                    record.set('isAjax', true);
-                },
+            if(recordInStore) {
+                record = recordInStore;
+                record.resetPromise().resolve(record);
+            } else {
+                $.ajax(Ember.merge(config, {
+                        beforeSend: function() {
+                            record.set('isAjax', true);
+                        },
 
-                complete: function() {
-                    record.set('isAjax', false);
-                },
+                        complete: function() {
+                            record.set('isAjax', false);
+                        },
 
-                success: function(data) {
-                    adapter._didLoad(data, record);
-                },
+                        success: function(data) {
+                            adapter._didLoad(data, record);
+                        },
 
-                error: function(response, type, title) {
-                    record.reject(response, type, title);
-                }
-            })
-            );
+                        error: function(response, type, title) {
+                            record.reject(response, type, title);
+                        }
+                    })
+                );
+            }
             return record;
         },
 
@@ -183,6 +189,7 @@
         createRecord: function(modelClass, record) {
             var config = this.setupAjax('createRecord', record, record.toJSON());
             var adapter = this;
+            this.getMapFor(modelClass.getName())[record.getClinetId()] = record;
             $.ajax(Ember.merge(config, {
                 data: record.toJSON(),
                 beforeSend: function() {

@@ -736,11 +736,72 @@
         }
     });
 }();
+!function () {
+    var get = Ember.get, set = Ember.set;
+
+    Frzn.Store = Ember.ObjectProxy.extend({
+        init: function() {
+            this._super();
+            this.set('content', Ember.Object.create({}));
+        },
+
+        getMapFor: function(name) {
+            if (this.get('content.' + name) === undefined) {
+                this.set('content.' + name, Ember.Object.create({}));
+            }
+            return this.get('content.' + name);
+        },
+
+        putRecord: function(record) {
+            var store = this.getMapFor(record.constructor.getName());
+            if(store) {
+                var id = record.getClientId();
+                var old = get(store, id);
+                if(old) {
+                    old.load(record.toPlainObject());
+                } else {
+                    set(store, id, record);
+                }
+
+                return old || record;
+            }
+            return null;
+        },
+
+        getRecord: function(record) {
+            var store = this.getMapFor(record.constructor.getName());
+            if(store) {
+                var id = record.getClientId();
+                return get(store, id);
+            }
+            return null;
+        },
+
+        removeRecord: function(record) {
+            var store = this.getMapFor(record.constructor.getName());
+            if(store) {
+                var id = record.getClientId();
+                set(store, id, null);
+            }
+        }
+    });
+}();
 !function() {
     var AbstractAdapter = Ember.Object.extend({
         extractMeta: null,
 
         discardOnFail: true,
+
+        store: null,
+
+        init: function() {
+            this._super();
+            this.store = Frzn.Store.create({});
+        },
+
+        getFromStore: function(record) {
+            return this.store.getRecord(record);
+        },
 
         extractData: function(data, record) {
             return record.constructor.rootProperty ? data[record.constructor.rootProperty] : data;
@@ -757,22 +818,25 @@
             record.load(json);
             record.set('isLoaded', true);
             record.trigger('didLoad', record);
+            this.store.putRecord(record);
             record.resolve(record);
         },
 
         /**
          * After load hook
          * @param data
-         * @param record
+         * @param records
          * @private
          */
         _didLoadMany: function(data, records) {
-            var objs = records.type.rootCollectionProperty ? data[records.type.rootCollectionProperty] : data;
-            records.load(objs);
+            var objects = records.type.rootCollectionProperty ? data[records.type.rootCollectionProperty] : data;
+            records.load(objects);
             if(this.extractMeta && typeof this.extractMeta === 'function') {
                 this.extractMeta(data, records);
             }
+            var adapter = this;
             records.forEach(function(record) {
+                adapter.store.putRecord(record);
                 record.resolve(record);
             });
             records.resolve(records);
@@ -790,6 +854,7 @@
             record.set('isSaved', true);
             record.set('isLoaded', true);
             record.trigger('didSave', record);
+            this.store.putRecord(record);
             record.resolve(record);
         },
 
@@ -805,6 +870,7 @@
             record.set('isSaved', true);
             record.set('isLoaded', true);
             record.trigger('didSave', record);
+            this.store.putRecord(record);
             record.resolve(record);
         },
 
@@ -819,12 +885,12 @@
             record.load(json);
             record.set('isDeleted', true);
             record.trigger('didDelete', record);
+            this.store.removeRecord(record);
             record.resolve(record);
         },
 
         /**
          * After update fail hook
-         * @param data
          * @param record
          * @private
          */
@@ -906,11 +972,11 @@
     });
 
     var InMemoryAdapter = AbstractAdapter.extend({
-        store: null,
+        database: null,
 
         initCollection: function(name) {
-            if(!this.store[name]) {
-                this.store[name] = Em.A();
+            if(!this.database[name]) {
+                this.database[name] = Em.A();
             }
             return this;
         },
@@ -918,7 +984,7 @@
         find: function(modelClass, record, id) {
             var name = modelClass.getName();
             this.initCollection(name);
-            var data = this.store[name].findBy(modelClass.idProperty, id);
+            var data = this.database[name].findBy(modelClass.idProperty, id);
             if(data) {
                 this._didLoad(data, record);
             } else {
@@ -934,8 +1000,8 @@
         findAll: function(modelClass, records) {
             var name = modelClass.getName();
             this.initCollection(name);
-            if(this.store[name]) {
-                var data = this.store[name];
+            if(this.database[name]) {
+                var data = this.database[name];
                 this._didLoadMany(data, records);
             } else {
                 records.reject({
@@ -950,8 +1016,8 @@
         findQuery: function(modelClass, records, params) {
             var name = modelClass.getName();
             this.initCollection(name);
-            if(this.store[name]) {
-                var data = this.store[name];
+            if(this.database[name]) {
+                var data = this.database[name];
                 for(var prop in params) {
                     data = data.filterBy(prop, params[prop]);
                 }
@@ -969,10 +1035,10 @@
         findIds: function(modelClass, records, ids) {
             var name = modelClass.getName();
             this.initCollection(name);
-            if(this.store[name]) {
+            if(this.database[name]) {
                 var data = Em.A([]);
                 for(var index = 0; index < ids.length; index++) {
-                    var rec = this.store[name].findBy('id', ids[index]);
+                    var rec = this.database[name].findBy('id', ids[index]);
                     data.push(rec);
                 }
                 this._didLoadMany(data, records);
@@ -989,9 +1055,9 @@
         createRecord: function(modelClass, record) {
             var name = modelClass.getName();
             this.initCollection(name);
-            if(this.store[name]) {
-                record.set('id', this.store[name].length);
-                this.store[name].push(record);
+            if(this.database[name]) {
+                record.set('id', this.database[name].length);
+                this.database[name].push(record);
                 this._didCreate(record.toPlainObject(), record);
             }
             return record;
@@ -1013,7 +1079,7 @@
     InMemoryAdapter.reopenClass({
         createWithData: function(data) {
             return InMemoryAdapter.create({
-                store: data
+                database: data
             });
         }
     })
@@ -1088,7 +1154,7 @@
          * This method look in the urlMapping table to find configuration for the requested action.
          * It performs substitutions in the given string using passed parameters.
          * @param action - the action you want the url for
-         * @param modelClass - the actual model class
+         * @param model - the actual model class
          * @param params {object=} [params] - Parameters used in url substitution
          * @returns {string}
          */
@@ -1135,26 +1201,32 @@
          * @inheritDoc
          */
         find: function(modelClass, record, id) {
+            var recordInStore = this.getFromStore(record);
             var config = this.setupAjax('find', record, {id: id});
             var adapter = this;
-            $.ajax(Ember.merge(config, {
-                beforeSend: function() {
-                    record.set('isAjax', true);
-                },
+            if(recordInStore) {
+                record = recordInStore;
+                record.resetPromise().resolve(record);
+            } else {
+                $.ajax(Ember.merge(config, {
+                        beforeSend: function() {
+                            record.set('isAjax', true);
+                        },
 
-                complete: function() {
-                    record.set('isAjax', false);
-                },
+                        complete: function() {
+                            record.set('isAjax', false);
+                        },
 
-                success: function(data) {
-                    adapter._didLoad(data, record);
-                },
+                        success: function(data) {
+                            adapter._didLoad(data, record);
+                        },
 
-                error: function(response, type, title) {
-                    record.reject(response, type, title);
-                }
-            })
-            );
+                        error: function(response, type, title) {
+                            record.reject(response, type, title);
+                        }
+                    })
+                );
+            }
             return record;
         },
 
@@ -1207,6 +1279,7 @@
         createRecord: function(modelClass, record) {
             var config = this.setupAjax('createRecord', record, record.toJSON());
             var adapter = this;
+            this.getMapFor(modelClass.getName())[record.getClinetId()] = record;
             $.ajax(Ember.merge(config, {
                 data: record.toJSON(),
                 beforeSend: function() {

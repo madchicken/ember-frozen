@@ -41,6 +41,7 @@ module.exports = function(grunt) {
                     "<%= dirs.js %>/relationships.js",
                     "<%= dirs.js %>/model.js",
                     "<%= dirs.js %>/validators.js",
+                    "<%= dirs.js %>/store.js",
                     "<%= dirs.js %>/adapter.js",
                     "<%= dirs.js %>/urlMappingAdapter.js",
                     "<%= dirs.js %>/restAdapter.js"
@@ -75,7 +76,7 @@ module.exports = function(grunt) {
             src: '<%= dirs.build %>/ember-frozen.js',
             options: {
                 specs: 'spec/*.spec.js',
-                vendor: ['lib/ember/jquery-1.9.1.js', 'lib/ember/handlebars-1.0.0.js', 'lib/ember/ember-1.0.0.js']
+                vendor: ['lib/jquery/dist/jquery.js', 'lib/handlebars/handlebars.js', 'lib/ember/ember.js']
             }
         }
     });
