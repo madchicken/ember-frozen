@@ -29,13 +29,13 @@
                 url: ':resourceURI/',
                 contentType: 'application/json; charset=UTF-8',
                 dataType: 'json',
-                type: 'PUT'
+                type: 'POST'
             },
             updateRecord: {
                 url: ':resourceURI/:id',
                 contentType: 'application/json; charset=UTF-8',
                 dataType: 'json',
-                type: 'POST'
+                type: 'PUT'
             },
             deleteRecord: {
                 url: ':resourceURI/:id',

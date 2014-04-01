@@ -1,7 +1,7 @@
 "use strict"
 !function(){
     window.Frzn = Ember.Object.extend({
-        version: '0.8.7'
+        version: '0.8.8'
     });
 }();
 
@@ -1333,13 +1333,13 @@
                 url: ':resourceURI/',
                 contentType: 'application/json; charset=UTF-8',
                 dataType: 'json',
-                type: 'PUT'
+                type: 'POST'
             },
             updateRecord: {
                 url: ':resourceURI/:id',
                 contentType: 'application/json; charset=UTF-8',
                 dataType: 'json',
-                type: 'POST'
+                type: 'PUT'
             },
             deleteRecord: {
                 url: ':resourceURI/:id',
