@@ -230,6 +230,17 @@ describe("Frozen Model", function () {
             var person = MyModel.create({name: 'John', age: 39, birthDate: "bad date"});
             expect(person.get('birthDate')).toBe(null);
         });
+
+        it('Setting a number for a date type should convert it to the right date', function() {
+            var MyModel = Model.extend({
+                name: attr(),
+                age: attr('number'),
+                birthDate: attr('date')
+            });
+
+            var person = MyModel.create({name: 'John', age: 39, birthDate: 1397551268751});
+            expect(person.get('birthDate').getTime()).toBe(1397551268751);
+        });
     });
 
     describe('toJSON', function() {

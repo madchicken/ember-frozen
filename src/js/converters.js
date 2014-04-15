@@ -84,6 +84,12 @@
     }));
 
     registerConverter('date', SimpleConverter.extend({
+        isValidDate: function(d) {
+            if ( Object.prototype.toString.call(d) !== "[object Date]" )
+                return false;
+            return !isNaN(d.getTime());
+        },
+
         convert: function(value) {
             if(value !== null && value !== undefined) {
                 if(typeof value === 'string') {
@@ -95,8 +101,13 @@
                 }
                 else if (value instanceof Date)
                     return value;
-                else
+                else {
+                    var d = new Date(value);
+                    if(this.isValidDate(d)) {
+                        return d;
+                    }
                     return null;
+                }
             }
             return value;
         }
