@@ -240,7 +240,7 @@
             for(var i = 0; i < properties.length; i++) {
                 var meta = this.constructor.metaForProperty(properties[i]);
                 if(meta.options.isRelationship) {
-                    var rel = this.getRel(properties[i]);
+                    rel = this.getRel(properties[i]);
                     related[properties[i]] = rel.toPlainObject();
                 } else {
                     keep.push(properties[i]);
