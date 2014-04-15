@@ -7,7 +7,7 @@
             this.set('content', Ember.Object.create({}));
         },
 
-        getMapFor: function(name) {
+        getCacheFor: function(name) {
             if (this.get('content.' + name) === undefined) {
                 this.set('content.' + name, Ember.Object.create({}));
             }
@@ -15,7 +15,7 @@
         },
 
         putRecord: function(record) {
-            var store = this.getMapFor(record.constructor.getName());
+            var store = this.getCacheFor(record.constructor.getName());
             if(store) {
                 var id = record.getClientId();
                 var old = get(store, id);
@@ -31,7 +31,7 @@
         },
 
         getRecord: function(record) {
-            var store = this.getMapFor(record.constructor.getName());
+            var store = this.getCacheFor(record.constructor.getName());
             if(store) {
                 var id = record.getClientId();
                 return get(store, id);
@@ -40,7 +40,7 @@
         },
 
         removeRecord: function(record) {
-            var store = this.getMapFor(record.constructor.getName());
+            var store = this.getCacheFor(record.constructor.getName());
             if(store) {
                 var id = record.getClientId();
                 set(store, id, null);

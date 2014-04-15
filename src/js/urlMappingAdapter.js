@@ -189,7 +189,7 @@
         createRecord: function(modelClass, record) {
             var config = this.setupAjax('createRecord', record, record.toJSON());
             var adapter = this;
-            this.getMapFor(modelClass.getName())[record.getClinetId()] = record;
+            this.getCacheFor(modelClass.getName())[record.getClinetId()] = record;
             $.ajax(Ember.merge(config, {
                 data: record.toJSON(),
                 beforeSend: function() {
