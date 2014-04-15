@@ -1290,7 +1290,7 @@
         createRecord: function(modelClass, record) {
             var config = this.setupAjax('createRecord', record, record.toJSON());
             var adapter = this;
-            this.getCacheFor(modelClass.getName())[record.getClientId()] = record;
+            this.getFromStore(modelClass.getName())[record.getClientId()] = record;
             $.ajax(Ember.merge(config, {
                 data: record.toJSON(),
                 beforeSend: function() {
