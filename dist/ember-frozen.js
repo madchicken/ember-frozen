@@ -91,6 +91,12 @@
     }));
 
     registerConverter('date', SimpleConverter.extend({
+        isValidDate: function(d) {
+            if ( Object.prototype.toString.call(d) !== "[object Date]" )
+                return false;
+            return !isNaN(d.getTime());
+        },
+
         convert: function(value) {
             if(value !== null && value !== undefined) {
                 if(typeof value === 'string') {
@@ -102,8 +108,13 @@
                 }
                 else if (value instanceof Date)
                     return value;
-                else
+                else {
+                    var d = new Date(value);
+                    if(this.isValidDate(d)) {
+                        return d;
+                    }
                     return null;
+                }
             }
             return value;
         }
@@ -506,7 +517,7 @@
             for(var i = 0; i < properties.length; i++) {
                 var meta = this.constructor.metaForProperty(properties[i]);
                 if(meta.options.isRelationship) {
-                    var rel = this.getRel(properties[i]);
+                    rel = this.getRel(properties[i]);
                     related[properties[i]] = rel.toPlainObject();
                 } else {
                     keep.push(properties[i]);
@@ -745,7 +756,7 @@
             this.set('content', Ember.Object.create({}));
         },
 
-        getMapFor: function(name) {
+        getCacheFor: function(name) {
             if (this.get('content.' + name) === undefined) {
                 this.set('content.' + name, Ember.Object.create({}));
             }
@@ -753,7 +764,7 @@
         },
 
         putRecord: function(record) {
-            var store = this.getMapFor(record.constructor.getName());
+            var store = this.getCacheFor(record.constructor.getName());
             if(store) {
                 var id = record.getClientId();
                 var old = get(store, id);
@@ -769,7 +780,7 @@
         },
 
         getRecord: function(record) {
-            var store = this.getMapFor(record.constructor.getName());
+            var store = this.getCacheFor(record.constructor.getName());
             if(store) {
                 var id = record.getClientId();
                 return get(store, id);
@@ -778,7 +789,7 @@
         },
 
         removeRecord: function(record) {
-            var store = this.getMapFor(record.constructor.getName());
+            var store = this.getCacheFor(record.constructor.getName());
             if(store) {
                 var id = record.getClientId();
                 set(store, id, null);
@@ -1279,7 +1290,7 @@
         createRecord: function(modelClass, record) {
             var config = this.setupAjax('createRecord', record, record.toJSON());
             var adapter = this;
-            this.getMapFor(modelClass.getName())[record.getClinetId()] = record;
+            this.getCacheFor(modelClass.getName())[record.getClinetId()] = record;
             $.ajax(Ember.merge(config, {
                 data: record.toJSON(),
                 beforeSend: function() {
