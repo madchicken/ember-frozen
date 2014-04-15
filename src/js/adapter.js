@@ -15,6 +15,10 @@
             return this.store.getRecord(record);
         },
 
+        putInStore: function(record) {
+            return this.store.putRecord(record);
+        },
+
         extractData: function(data, record) {
             return record.constructor.rootProperty ? data[record.constructor.rootProperty] : data;
         },
