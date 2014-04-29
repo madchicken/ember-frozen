@@ -145,6 +145,7 @@
             var adapter = this;
             $.ajax(Ember.merge(config, {
                 success: function(data) {
+                    adapter.store.clearCache();
                     adapter._didLoadMany(data, records);
                 },
 

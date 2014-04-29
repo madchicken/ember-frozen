@@ -1,6 +1,6 @@
 !function() {
     var AbstractAdapter = Ember.Object.extend({
-        extractMeta: null,
+        extractMeta: Ember.K,
 
         discardOnFail: true,
 
@@ -183,20 +183,26 @@
         }
     });
 
-    var InMemoryAdapter = AbstractAdapter.extend({
+    var InMemoryAdapter = AbstractAdapter.extend(Ember.SortableMixin, {
         database: null,
 
-        initCollection: function(name) {
-            if(!this.database[name]) {
-                this.database[name] = Em.A();
+        init: function() {
+            if(!this.database) {
+                this.database = Em.A();
             }
-            return this;
+            return this._super();
+        },
+
+        extractMeta: function(data, records) {
+            records.set('meta', {
+                offset: this.get('offset'),
+                limit: this.get('limit'),
+                total: this.database.length
+            });
         },
 
         find: function(modelClass, record, id) {
-            var name = modelClass.getName();
-            this.initCollection(name);
-            var data = this.database[name].findBy(modelClass.idProperty, id);
+            var data = this.database.findBy(modelClass.idProperty, id);
             if(data) {
                 this._didLoad(data, record);
             } else {
@@ -211,80 +217,93 @@
 
         findAll: function(modelClass, records) {
             var name = modelClass.getName();
-            this.initCollection(name);
-            if(this.database[name]) {
-                var data = this.database[name];
-                this._didLoadMany(data, records);
-            } else {
-                records.reject({
-                    errorCode: 404,
-                    type: 'error',
-                    message: 'Object not found'
-                });
-            }
+            this.store.clearCache(name);
+            this.set('limit', 100);
+            this.set('offset', 0);
+            var data = this.database;
+            this._didLoadMany(data, records);
             return records;
         },
 
         findQuery: function(modelClass, records, params) {
-            var name = modelClass.getName();
-            this.initCollection(name);
-            if(this.database[name]) {
-                var data = this.database[name];
-                for(var prop in params) {
+            var data = this.database;
+            this.set('limit', 100);
+            if(Ember.get(params, 'limit'))
+                this.set('limit', Ember.get(params, 'limit'));
+            this.set('offset', 0);
+            if(Ember.get(params, 'offset'))
+                this.set('offset', Ember.get(params, 'offset'));
+            for(var prop in params) {
+                if(prop !== 'limit' && prop !== 'offset' && prop !== 'sortBy' && prop !== 'sortDir')
                     data = data.filterBy(prop, params[prop]);
-                }
-                this._didLoadMany(data, records);
-            } else {
-                records.reject({
-                    errorCode: 404,
-                    type: 'error',
-                    message: 'Object not found'
+            }
+            var sortBy = Ember.get(params, 'sortBy');
+            if(sortBy) {
+                var ascending = Ember.get(params, 'sortDir') !== 'desc';
+                data.sort(function(a, b){
+                    if(Ember.get(a, sortBy) > Ember.get(b, sortBy)) {
+                        return ascending ? 1 : -1;
+                    }
+                    if(Ember.get(a, sortBy) < Ember.get(b, sortBy)) {
+                        return ascending ? -1 : 1;
+                    }
+                    if(Ember.get(a, sortBy) == Ember.get(b, sortBy)) {
+                        return 0;
+                    }
                 });
             }
+            data = data.slice(this.get('offset'), this.get('offset') + this.get('limit'));
+            this._didLoadMany(data, records);
             return records;
         },
 
         findIds: function(modelClass, records, ids) {
-            var name = modelClass.getName();
-            this.initCollection(name);
-            if(this.database[name]) {
-                var data = Em.A([]);
-                for(var index = 0; index < ids.length; index++) {
-                    var rec = this.database[name].findBy('id', ids[index]);
-                    data.push(rec);
-                }
-                this._didLoadMany(data, records);
+            var data = Em.A([]);
+            for(var index = 0; index < ids.length; index++) {
+                var rec = this.database.findBy('id', ids[index]);
+                data.push(rec);
+            }
+            this._didLoadMany(data, records);
+            return records;
+        },
+
+        createRecord: function(modelClass, record) {
+            record.set('id', this.database.length);
+            this.database.push(record);
+            this._didCreate(record.toPlainObject(), record);
+        },
+
+        reloadRecord: function(modelClass, record) {
+            return this.find(modelClass, record, record.getId());
+        },
+
+        updateRecord: function(modelClass, record) {
+            var data = this.database.findBy(modelClass.idProperty, record.getId());
+            if(data) {
+                this._didUpdate(record.toPlainObject(), record);
             } else {
-                records.reject({
+                record.reject({
                     errorCode: 404,
                     type: 'error',
                     message: 'Object not found'
                 });
             }
-            return records;
-        },
-
-        createRecord: function(modelClass, record) {
-            var name = modelClass.getName();
-            this.initCollection(name);
-            if(this.database[name]) {
-                record.set('id', this.database[name].length);
-                this.database[name].push(record);
-                this._didCreate(record.toPlainObject(), record);
-            }
             return record;
         },
 
-        reloadRecord: function(modelClass, record) {
-
-        },
-
-        updateRecord: function(modelClass, record) {
-            Ember.assert("You must provide a valid updateRecord function for your adapter", false);
-        },
-
         deleteRecord: function(modelClass, record) {
-            Ember.assert("You must provide a valid delete function for your adapter", false);
+            var data = this.database.findBy(modelClass.idProperty, record.getId());
+            if(data) {
+                this.database = this.database.without(data);
+                this._didDelete(record.toPlainObject(), record)
+            } else {
+                record.reject({
+                    errorCode: 404,
+                    type: 'error',
+                    message: 'Object not found'
+                });
+            }
+            return record;
         }
     });
 
@@ -294,7 +313,7 @@
                 database: data
             });
         }
-    })
+    });
 
     Frzn.AbstractAdapter = AbstractAdapter;
     Frzn.RecordArray = RecordArray;

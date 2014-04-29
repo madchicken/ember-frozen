@@ -313,6 +313,13 @@
             return instance
         },
 
+        createResolved: function() {
+            var C = this;
+            var instance = C.create();
+            instance.resolve(instance);
+            return instance
+        },
+
         _create: Ember.Object.create,
 
         getName: function() {
