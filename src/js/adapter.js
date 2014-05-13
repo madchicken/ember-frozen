@@ -29,9 +29,9 @@
             var json = this.extractData(data, record);
             record.load(json);
             record.set('isLoaded', true);
-            record.trigger('didLoad', record);
-            this.store.putRecord(record);
-            record.resolve(record);
+            var stored = this.store.putRecord(record);
+            record.trigger('didLoad', stored);
+            record.resolve(stored);
         },
 
         /**
@@ -48,8 +48,7 @@
             }
             var adapter = this;
             records.forEach(function(record) {
-                adapter.store.putRecord(record);
-                record.resolve(record);
+                record.resolve(adapter.store.putRecord(record));
             });
             records.resolve(records);
         },
@@ -65,9 +64,9 @@
             record.load(json);
             record.set('isSaved', true);
             record.set('isLoaded', true);
-            record.trigger('didSave', record);
-            this.store.putRecord(record);
-            record.resolve(record);
+            var stored = this.store.putRecord(record);
+            record.trigger('didSave', stored);
+            record.resolve(stored);
         },
 
         /**
@@ -81,9 +80,9 @@
             record.load(json);
             record.set('isSaved', true);
             record.set('isLoaded', true);
-            record.trigger('didSave', record);
-            this.store.putRecord(record);
-            record.resolve(record);
+            var stored = this.store.putRecord(record);
+            record.trigger('didSave', stored);
+            record.resolve(this.store.putRecord(stored));
         },
 
         /**
@@ -96,8 +95,8 @@
             var json = this.extractData(data, record);
             record.load(json);
             record.set('isDeleted', true);
-            record.trigger('didDelete', record);
             this.store.removeRecord(record);
+            record.trigger('didDelete', record);
             record.resolve(record);
         },
 
