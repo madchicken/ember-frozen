@@ -131,7 +131,6 @@
 
     var saveState = function(model) {
         var dirtyAttrs = get(model, '_dirtyAttributes');
-        var backup = model.get('_backup');
         for(var i = 0; i < dirtyAttrs.length; i++) {
             var p = dirtyAttrs[i];
             if(model.constructor.metaForProperty(p).options.isRelationship) {
@@ -310,14 +309,14 @@
                 instance.setProperties(arguments[0]);
             }
             instance.commit();
-            return instance
+            return instance;
         },
 
         createResolved: function() {
             var C = this;
-            var instance = C.create();
+            var instance = C.create(arguments);
             instance.resolve(instance);
-            return instance
+            return instance;
         },
 
         _create: Ember.Object.create,

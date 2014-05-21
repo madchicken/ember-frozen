@@ -143,5 +143,5 @@
             Frzn.registerConverter("belongsTo"+destination, getConverter('model').constructor.extend({}));
             return Frzn.attr("belongsTo"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'belongsTo', destination: destination}))
         }
-    })
+    });
 }();

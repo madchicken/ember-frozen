@@ -1,4 +1,4 @@
-"use strict"
+"use strict";
 !function(){
     window.Frzn = Ember.Object.extend({
         version: '0.8.10'
@@ -7,7 +7,6 @@
 
 !function() {
     var converters = {};
-    var get = Ember.get, set = Ember.set;
 
     var getConverter = function(name) {
         return converters[name] || SimpleConverter.create({name: name});
@@ -27,7 +26,7 @@
                 return value.valueOf();
             return value;
         }
-    })
+    });
 
     registerConverter('model', Ember.Object.extend({
         convert: function(value, options) {
@@ -126,7 +125,9 @@
 
         getConverter: getConverter
 
-    })
+    });
+
+    Frzn.SimpleConverter = SimpleConverter;
 }();
 !function() {
     var get = Ember.get, set = Ember.set, getConverter = Frzn.getConverter;
@@ -273,7 +274,7 @@
             Frzn.registerConverter("belongsTo"+destination, getConverter('model').constructor.extend({}));
             return Frzn.attr("belongsTo"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'belongsTo', destination: destination}))
         }
-    })
+    });
 }();
 !function () {
     var get = Ember.get, set = Ember.set, getConverter = Frzn.getConverter, relationships = Frzn.relationships;
@@ -587,14 +588,14 @@
                 instance.setProperties(arguments[0]);
             }
             instance.commit();
-            return instance
+            return instance;
         },
 
         createResolved: function() {
             var C = this;
-            var instance = C.create();
+            var instance = C.create(arguments);
             instance.resolve(instance);
-            return instance
+            return instance;
         },
 
         _create: Ember.Object.create,
@@ -853,9 +854,12 @@
                 this.extractMeta(data, records);
             }
             var adapter = this;
-            records.forEach(function(record) {
-                record.resolve(adapter.store.putRecord(record));
-            });
+            for(var i = 0; i < records.get('length'); i++) {
+                var record = records.objectAt(i);
+                var stored = adapter.store.putRecord(record);
+                record.resolve(stored);
+                records.get('content')[i] = stored;
+            }
             records.resolve(records);
         },
 

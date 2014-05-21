@@ -47,9 +47,12 @@
                 this.extractMeta(data, records);
             }
             var adapter = this;
-            records.forEach(function(record) {
-                record.resolve(adapter.store.putRecord(record));
-            });
+            for(var i = 0; i < records.get('length'); i++) {
+                var record = records.objectAt(i);
+                var stored = adapter.store.putRecord(record);
+                record.resolve(stored);
+                records.get('content')[i] = stored;
+            }
             records.resolve(records);
         },
 

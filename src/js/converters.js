@@ -1,6 +1,5 @@
 !function() {
     var converters = {};
-    var get = Ember.get, set = Ember.set;
 
     var getConverter = function(name) {
         return converters[name] || SimpleConverter.create({name: name});
@@ -20,7 +19,7 @@
                 return value.valueOf();
             return value;
         }
-    })
+    });
 
     registerConverter('model', Ember.Object.extend({
         convert: function(value, options) {
@@ -119,5 +118,7 @@
 
         getConverter: getConverter
 
-    })
+    });
+
+    Frzn.SimpleConverter = SimpleConverter;
 }();
