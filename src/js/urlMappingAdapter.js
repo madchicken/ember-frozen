@@ -1,4 +1,5 @@
-!function() {
+(function() {
+    'use strict';
     var UrlMappingAdapter = Frzn.AbstractAdapter.extend({
         rootPath: '',
 
@@ -55,8 +56,8 @@
 
         init: function() {
             this._super();
-            Ember.assert("You must provide a valid url map table", this.get('urlMapping') !== null && this.get('urlMapping') !== undefined && !$.isEmptyObject(this.get('urlMapping')));
-            Ember.assert("Url map table must be a valid hash object", !$.isEmptyObject(this.get('urlMapping')));
+            Ember.assert('You must provide a valid url map table', this.get('urlMapping') !== null && this.get('urlMapping') !== undefined && !$.isEmptyObject(this.get('urlMapping')));
+            Ember.assert('Url map table must be a valid hash object', !$.isEmptyObject(this.get('urlMapping')));
         },
 
         /**
@@ -78,7 +79,7 @@
 
             var mapping = this.get('urlMapping');
             var actionData = mapping[action];
-            Ember.warn("No configuration found for action " + action, actionData !== undefined);
+            Ember.warn('No configuration found for action ' + action, actionData !== undefined);
             actionData = actionData || {url: ':resourceURI/', type: 'GET', dataType: 'json'};
             actionData = Ember.copy(actionData, true);
             var url = typeof modelClass.url === 'function' ? modelClass.url() : modelClass.url;
@@ -98,10 +99,11 @@
                 }
             }
             if(this.rootPath) {
-                if(typeof this.rootPath === 'function')
+                if(typeof this.rootPath === 'function') {
                     actionData.url = this.rootPath() + actionData.url;
-                else
+                } else {
                     actionData.url = this.rootPath + actionData.url;
+                }
             }
 
             return actionData;
@@ -285,4 +287,4 @@
     });
 
     Frzn.UrlMappingAdapter = UrlMappingAdapter;
-}();
+})();

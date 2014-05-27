@@ -1,4 +1,5 @@
-!function() {
+(function() {
+    'use strict';
     var AbstractAdapter = Ember.Object.extend({
         extractMeta: Ember.K,
 
@@ -121,8 +122,8 @@
          * @param id {object} - the id of the object to find
          * @return {object} - a model instance, that is promise too
          */
-        find: function(modelClass, record, id) {
-            Ember.assert("You must provide a valid find function for your adapter", false);
+        find: function() {
+            Ember.assert('You must provide a valid find function for your adapter', false);
         },
 
         /**
@@ -131,32 +132,32 @@
          * @param records {Frzn.RecordArray} - the provided record array that will be used to fulfill the request
          * @return {object} - a model instance, that is promise too
          */
-        findAll: function(modelClass, records) {
-            Ember.assert("You must provide a valid findAll function for your adapter", false);
+        findAll: function() {
+            Ember.assert('You must provide a valid findAll function for your adapter', false);
         },
 
         findQuery: function() {
-            Ember.assert("You must provide a valid findQuery function for your adapter", false);
+            Ember.assert('You must provide a valid findQuery function for your adapter', false);
         },
 
         findIds: function() {
-            Ember.assert("You must provide a valid findIds function for your adapter", false);
+            Ember.assert('You must provide a valid findIds function for your adapter', false);
         },
 
         createRecord: function() {
-            Ember.assert("You must provide a valid createRecord function for your adapter", false);
+            Ember.assert('You must provide a valid createRecord function for your adapter', false);
         },
 
         updateRecord: function() {
-            Ember.assert("You must provide a valid updateRecord function for your adapter", false);
+            Ember.assert('You must provide a valid updateRecord function for your adapter', false);
         },
 
         reloadRecord: function() {
-            Ember.assert("You must provide a valid reloadRecord function for your adapter", false);
+            Ember.assert('You must provide a valid reloadRecord function for your adapter', false);
         },
 
         deleteRecord: function() {
-            Ember.assert("You must provide a valid delete function for your adapter", false);
+            Ember.assert('You must provide a valid delete function for your adapter', false);
         }
     });
 
@@ -164,7 +165,7 @@
         init: function() {
             this._super();
             this.set('meta', Em.Object.create({}));
-            Ember.assert("You must specify a type for a record array", this.type != undefined);
+            Ember.assert('You must specify a type for a record array', this.type !== undefined);
         },
 
         load: function(data) {
@@ -230,14 +231,17 @@
         findQuery: function(modelClass, records, params) {
             var data = this.database;
             this.set('limit', 100);
-            if(Ember.get(params, 'limit'))
+            if(Ember.get(params, 'limit')) {
                 this.set('limit', Ember.get(params, 'limit'));
+            }
             this.set('offset', 0);
-            if(Ember.get(params, 'offset'))
+            if(Ember.get(params, 'offset')) {
                 this.set('offset', Ember.get(params, 'offset'));
+            }
             for(var prop in params) {
-                if(prop !== 'limit' && prop !== 'offset' && prop !== 'sortBy' && prop !== 'sortDir')
+                if(prop !== 'limit' && prop !== 'offset' && prop !== 'sortBy' && prop !== 'sortDir'){
                     data = data.filterBy(prop, params[prop]);
+                }
             }
             var sortBy = Ember.get(params, 'sortBy');
             if(sortBy) {
@@ -249,7 +253,7 @@
                     if(Ember.get(a, sortBy) < Ember.get(b, sortBy)) {
                         return ascending ? -1 : 1;
                     }
-                    if(Ember.get(a, sortBy) == Ember.get(b, sortBy)) {
+                    if(Ember.get(a, sortBy) === Ember.get(b, sortBy)) {
                         return 0;
                     }
                 });
@@ -297,7 +301,7 @@
             var data = this.database.findBy(modelClass.idProperty, record.getId());
             if(data) {
                 this.database = this.database.without(data);
-                this._didDelete(record.toPlainObject(), record)
+                this._didDelete(record.toPlainObject(), record);
             } else {
                 record.reject({
                     errorCode: 404,
@@ -320,4 +324,4 @@
     Frzn.AbstractAdapter = AbstractAdapter;
     Frzn.RecordArray = RecordArray;
     Frzn.InMemoryAdapter = InMemoryAdapter;
-}();
+})();

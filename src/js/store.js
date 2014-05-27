@@ -1,4 +1,5 @@
-!function () {
+(function () {
+    'use strict';
     Frzn.Store = Ember.ObjectProxy.extend({
         init: function() {
             this._super();
@@ -47,4 +48,4 @@
             this.set('content.' + name, Ember.Object.create({}));
         }
     });
-}();
+})();

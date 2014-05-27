@@ -1,5 +1,6 @@
-!function() {
-    var get = Ember.get, set = Ember.set, getConverter = Frzn.getConverter;
+(function() {
+    'use strict';
+    var getConverter = Frzn.getConverter;
 
     var Relationship = Em.Mixin.create({
         getObjectClass: function() {
@@ -125,23 +126,22 @@
         hasMany: function (destination, options) {
             options = options || {};
             options.embedded = options.embedded !== undefined ? options.embedded : true;
-            Frzn.registerConverter("hasMany"+destination, getConverter('modelArray').constructor.extend({}));
-            return Frzn.attr("hasMany"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasMany', destination: destination}))
+            Frzn.registerConverter('hasMany'+destination, getConverter('modelArray').constructor.extend({}));
+            return Frzn.attr('hasMany'+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasMany', destination: destination}));
         },
 
         hasOne: function(destination, options) {
             options = options || {};
             options.embedded = options.embedded !== undefined ? options.embedded : true;
-            Frzn.registerConverter("hasOne"+destination, getConverter('model').constructor.extend({}));
-            return Frzn.attr("hasOne"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasOne', destination: destination}))
+            Frzn.registerConverter('hasOne'+destination, getConverter('model').constructor.extend({}));
+            return Frzn.attr('hasOne'+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasOne', destination: destination}));
         },
 
         belongsTo: function(destination, options) {
             options = options || {};
             options.embedded = options.embedded !== undefined ? options.embedded : false;
-            var ModelConverter = getConverter('model');
-            Frzn.registerConverter("belongsTo"+destination, getConverter('model').constructor.extend({}));
-            return Frzn.attr("belongsTo"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'belongsTo', destination: destination}))
+            Frzn.registerConverter('belongsTo'+destination, getConverter('model').constructor.extend({}));
+            return Frzn.attr('belongsTo'+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'belongsTo', destination: destination}));
         }
     });
-}();
+})();

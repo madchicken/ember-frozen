@@ -1,11 +1,12 @@
-"use strict";
-!function(){
+(function(){
+    'use strict';
     window.Frzn = Ember.Object.extend({
         version: '0.8.10'
     });
-}();
+})();
 
-!function() {
+(function() {
+    'use strict';
     var converters = {};
 
     var getConverter = function(name) {
@@ -18,21 +19,22 @@
 
     var SimpleConverter = Ember.Object.extend({
         init: function() {
-            Ember.warn("Using Simple converter for " + this.get('name'), true);
+            Ember.warn('Using Simple converter for ' + this.get('name'), true);
         },
 
         convert: function(value) {
-            if(value)
+            if(value){
                 return value.valueOf();
+            }
             return value;
         }
     });
 
     registerConverter('model', Ember.Object.extend({
         convert: function(value, options) {
-            if(value instanceof options.destination)
+            if(value instanceof options.destination){
                 return value;
-            else {
+            } else {
                 if(value && typeof value === 'object') {
                     //try to build a new destination object
                     return options.destination.create(value);
@@ -47,7 +49,7 @@
             if(value instanceof Array) {
                 var array = [];
                 for(var i = 0; i < value.length; i++) {
-                    array.push(options.destination.create(value[i]))
+                    array.push(options.destination.create(value[i]));
                 }
                 return array;
             }
@@ -57,19 +59,21 @@
 
     registerConverter('string', SimpleConverter.extend({
         convert: function(value) {
-            if(!Ember.isEmpty(value))
-                return (new String(value)).valueOf();
-            else
+            if(!Ember.isEmpty(value)){
+                return (String(value)).valueOf();
+            } else {
                 return value;
+            }
         }
     }));
 
     registerConverter('boolean', SimpleConverter.extend({
         convert: function(value) {
-            if (value  != null)
+            if (value  !== null){
                 return !!value;
-            else
+            } else {
                 return null;
+            }
         }
     }));
 
@@ -82,7 +86,7 @@
     registerConverter('number', SimpleConverter.extend({
         convert: function(value) {
             if(value !== null && value !== undefined) {
-                var num = new Number(value);
+                var num = Number(value);
                 return num.valueOf();
             }
             return value;
@@ -91,8 +95,9 @@
 
     registerConverter('date', SimpleConverter.extend({
         isValidDate: function(d) {
-            if ( Object.prototype.toString.call(d) !== "[object Date]" )
+            if ( Object.prototype.toString.call(d) !== '[object Date]' ){
                 return false;
+            }
             return !isNaN(d.getTime());
         },
 
@@ -100,17 +105,17 @@
             if(value !== null && value !== undefined) {
                 if(typeof value === 'string') {
                     var d = new Date(Date.parse(value));
-                    if(isNaN(d.getTime()))
+                    if(isNaN(d.getTime())){
                         return null;
-                    else
+                    } else {
                         return d;
-                }
-                else if (value instanceof Date)
+                    }
+                } else if (value instanceof Date) {
                     return value;
-                else {
-                    var d = new Date(value);
-                    if(this.isValidDate(d)) {
-                        return d;
+                } else {
+                    var date = new Date(value);
+                    if(this.isValidDate(date)) {
+                        return date;
                     }
                     return null;
                 }
@@ -128,9 +133,10 @@
     });
 
     Frzn.SimpleConverter = SimpleConverter;
-}();
-!function() {
-    var get = Ember.get, set = Ember.set, getConverter = Frzn.getConverter;
+})();
+(function() {
+    'use strict';
+    var getConverter = Frzn.getConverter;
 
     var Relationship = Em.Mixin.create({
         getObjectClass: function() {
@@ -256,42 +262,42 @@
         hasMany: function (destination, options) {
             options = options || {};
             options.embedded = options.embedded !== undefined ? options.embedded : true;
-            Frzn.registerConverter("hasMany"+destination, getConverter('modelArray').constructor.extend({}));
-            return Frzn.attr("hasMany"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasMany', destination: destination}))
+            Frzn.registerConverter('hasMany'+destination, getConverter('modelArray').constructor.extend({}));
+            return Frzn.attr('hasMany'+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasMany', destination: destination}));
         },
 
         hasOne: function(destination, options) {
             options = options || {};
             options.embedded = options.embedded !== undefined ? options.embedded : true;
-            Frzn.registerConverter("hasOne"+destination, getConverter('model').constructor.extend({}));
-            return Frzn.attr("hasOne"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasOne', destination: destination}))
+            Frzn.registerConverter('hasOne'+destination, getConverter('model').constructor.extend({}));
+            return Frzn.attr('hasOne'+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'hasOne', destination: destination}));
         },
 
         belongsTo: function(destination, options) {
             options = options || {};
             options.embedded = options.embedded !== undefined ? options.embedded : false;
-            var ModelConverter = getConverter('model');
-            Frzn.registerConverter("belongsTo"+destination, getConverter('model').constructor.extend({}));
-            return Frzn.attr("belongsTo"+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'belongsTo', destination: destination}))
+            Frzn.registerConverter('belongsTo'+destination, getConverter('model').constructor.extend({}));
+            return Frzn.attr('belongsTo'+destination, Ember.merge(options, {isRelationship: true, relationshipType: 'belongsTo', destination: destination}));
         }
     });
-}();
-!function () {
+})();
+(function () {
+    'use strict';
     var get = Ember.get, set = Ember.set, getConverter = Frzn.getConverter, relationships = Frzn.relationships;
 
-    var setupRelationship = function(model, name, options) {
+    var setupRelationship = function (model, name, options) {
         //For relationships we create a wrapper object using Ember proxies
-        if(typeof options.destination == 'string') {
+        if (typeof options.destination === 'string') {
             var dst = get(options.destination);
-            if(!dst) {
+            if (!dst) {
                 var s = options.destination.split('.');
-                if(s.length) {
+                if (s.length) {
                     dst = Ember.Namespace.byName(s[0]).get(s.slice(1).join('.'));
                 }
             }
             options.destination = dst;
         }
-        Ember.assert("You must provide a valid model class for field " + name, options.destination != null && options.destination != undefined);
+        Ember.assert('You must provide a valid model class for field ' + name, options.destination !== null && options.destination !== undefined);
         var rel = relationships[options.relationshipType].create({
             type: options.relationshipType,
             options: options
@@ -310,30 +316,31 @@
      * @param name {string} - the field name
      * @param options {object=} - options describing the field
      */
-    var initField = function(model, name, options) {
-        Ember.assert("Field name must not be null", name !== null && name !== undefined && name != "");
-        if(get(model, '_data').hasOwnProperty(name) === false) {
+    var initField = function (model, name, options) {
+        Ember.assert('Field name must not be null', name !== null && name !== undefined && name !== '');
+        if (get(model, '_data').hasOwnProperty(name) === false) {
             options = options || {};
-            if(options.isRelationship) {
-                setupRelationship(model, name, options)
+            if (options.isRelationship) {
+                setupRelationship(model, name, options);
             } else {
                 set(model, '_data.' + name, options.defaultValue);
             }
             var properties = model._properties;
-            if(-1 === properties.indexOf(name)) //do not redefine
+            if (-1 === properties.indexOf(name)) {//do not redefine
                 properties.push(name);
+            }
         }
     };
 
-    var getValue = function(model, key) {
+    var getValue = function (model, key) {
         var meta = model.constructor.metaForProperty(key);
         //prepare for reading value: get _data object
         var data = get(model, '_data');
-        if(meta.options.isRelationship) {
+        if (meta.options.isRelationship) {
             //we are dealing with a relationship, so get its definition first
-            var rel = model['_relationships'][key];
+            var rel = model._relationships[key];
             //the real value is the content of the relationship proxy object
-            if(meta.options.embedded === false && meta.options.fetch === 'eager') {
+            if (meta.options.embedded === false && meta.options.fetch === 'eager') {
                 return rel.fetch();
             } else {
                 return get(rel, 'content');
@@ -344,7 +351,7 @@
         }
     };
 
-    var setValue = function(model, key, value) {
+    var setValue = function (model, key, value) {
         var meta = model.constructor.metaForProperty(key);
         var converter = getConverter(meta.type);
         value = converter.convert(value, meta.options);
@@ -353,13 +360,13 @@
         var backup = model._backup;
         //the old value is the one already present in _data object
         var oldValue = get(data, key);
-        if(meta.options.isRelationship) {
+        if (meta.options.isRelationship) {
             //we are dealing with a relationship, so get its definition first
-            var rel = model['_relationships'][key];
+            var rel = model._relationships[key];
             //old value is the content of the relationship object
             oldValue = get(rel, 'content');
             //set the parent object in the content
-            if(value) {
+            if (value) {
                 set(value, '_parent', model);
             }
             //update the value of the relationship
@@ -370,11 +377,13 @@
             set(data, key, value);
         }
         //save the old value in the backup object if needed
-        if(!backup[key])
+        if (!backup[key]) {
             backup[key] = oldValue;
+        }
         //mark dirty the field if necessary
-        if(oldValue != value)
+        if (oldValue !== value) {
             markDirty(model, key);
+        }
         return value;
     };
 
@@ -407,12 +416,12 @@
     });
 
 
-    var saveState = function(model) {
+    var saveState = function (model) {
         var dirtyAttrs = get(model, '_dirtyAttributes');
-        for(var i = 0; i < dirtyAttrs.length; i++) {
+        for (var i = 0; i < dirtyAttrs.length; i++) {
             var p = dirtyAttrs[i];
-            if(model.constructor.metaForProperty(p).options.isRelationship) {
-               model.getRel(p).commit();
+            if (model.constructor.metaForProperty(p).options.isRelationship) {
+                model.getRel(p).commit();
             }
         }
         set(model, '_dirtyAttributes', []);
@@ -420,14 +429,14 @@
         return model;
     };
 
-    var discardChanges = function(model) {
+    var discardChanges = function (model) {
         var backup = model.get('_backup');
         set(model, '_backup', {});
         var dirtyAttrs = get(model, '_dirtyAttributes');
         Ember.setProperties(model, Ember.getProperties(backup, dirtyAttrs));
         var relationships = model._relationships;
-        for(var name in relationships) {
-            if(relationships.hasOwnProperty(name)) {
+        for (var name in relationships) {
+            if (relationships.hasOwnProperty(name)) {
                 model.getRel(name).discard();
             }
         }
@@ -436,9 +445,9 @@
     };
 
 
-    var markDirty = function(model, field) {
+    var markDirty = function (model, field) {
         var dirtyAttributes = model._dirtyAttributes;
-        if(-1 === dirtyAttributes.indexOf(field)) {
+        if (-1 === dirtyAttributes.indexOf(field)) {
             dirtyAttributes.push(field);
         }
         return model;
@@ -460,44 +469,45 @@
         errors: null,
         clientId: null,
 
-        init: function() {
+        init: function () {
             this._super();
             this.clientId = guid();
             this._dirtyAttributes = [];
             this._backup = {};
         },
 
-        getId: function() {
+        getId: function () {
             return this.get(this.constructor.idProperty);
         },
 
-        getClientId: function() {
+        getClientId: function () {
             return this.clientId;
         },
 
-        getRel: function(rel) {
-            return this.get('_relationships.'+rel);
+        getRel: function (rel) {
+            return this.get('_relationships.' + rel);
         },
 
         discard: function () {
             return discardChanges(this);
         },
 
-        isDirty: function(attr) {
+        isDirty: function (attr) {
             var dirtyAttributes = this.get('_dirtyAttributes');
-            if(attr !== undefined) {
-                return !Ember.isEmpty(dirtyAttributes) && (dirtyAttributesindexOf(attr) != -1);
+            if (attr !== undefined) {
+                return !Ember.isEmpty(dirtyAttributes) && (dirtyAttributesindexOf(attr) !== -1);
             } else {
                 var dirty = false;
-                for(var relname in this._relationships) {
-                    if(this._relationships.hasOwnProperty(relname)) {
-                        var rel = this._relationships[relname];
-                        if(rel.get('type') == 'hasOne' || rel.get('type') == 'belongsTo') {
-                            dirty |= rel.get('content').isDirty();
-                        } else if(rel.get('type') == 'hasMany') {
-                            dirty |= rel.get('content').reduce(function(previousValue, item) {
-                                return previousValue |= item.isDirty();
-                            }, false);
+                var callback = function (previousValue, item) {
+                    return previousValue || item.isDirty();
+                };
+                for (var relName in this._relationships) {
+                    if (this._relationships.hasOwnProperty(relName)) {
+                        var rel = this._relationships[relName];
+                        if (rel.get('type') === 'hasOne' || rel.get('type') === 'belongsTo') {
+                            dirty = dirty || rel.get('content').isDirty();
+                        } else if (rel.get('type') === 'hasMany') {
+                            dirty = dirty || rel.get('content').reduce(callback, false);
                         }
                     }
                 }
@@ -505,18 +515,18 @@
             }
         },
 
-        commit: function() {
+        commit: function () {
             return saveState(this);
         },
 
-        toPlainObject: function() {
+        toPlainObject: function () {
             var properties = this._properties;
             var rel = this._relationships;
             var keep = [];
             var related = {};
-            for(var i = 0; i < properties.length; i++) {
+            for (var i = 0; i < properties.length; i++) {
                 var meta = this.constructor.metaForProperty(properties[i]);
-                if(meta.options.isRelationship) {
+                if (meta.options.isRelationship) {
                     rel = this.getRel(properties[i]);
                     related[properties[i]] = rel.toPlainObject();
                 } else {
@@ -527,39 +537,40 @@
             return Ember.merge(base, related);
         },
 
-        toJSON: function() {
+        toJSON: function () {
             return JSON.stringify(this.toPlainObject());
         },
 
-        load: function(data) {
-            this.setProperties(data)
+        load: function (data) {
+            this.setProperties(data);
             this.commit();
             return this;
         },
 
-        save: function() {
-            if(this.getId())
+        save: function () {
+            if (this.getId()) {
                 return this.update();
+            }
             return this.constructor.adapter.createRecord(this.constructor, this);
         },
 
-        update: function() {
+        update: function () {
             return this.constructor.adapter.updateRecord(this.constructor, this);
         },
 
-        remove: function() {
+        remove: function () {
             return this.constructor.adapter.deleteRecord(this.constructor, this);
         },
 
-        reload: function() {
+        reload: function () {
             return this.constructor.adapter.reloadRecord(this.constructor, this);
         },
 
-        fetch: function() {
+        fetch: function () {
             return this.reload();
         },
 
-        resetPromise: function() {
+        resetPromise: function () {
             this.set('_deferred', Ember.RSVP.defer());
             return this;
         }
@@ -572,7 +583,7 @@
 
         rootCollectionProperty: null,
 
-        create: function() {
+        create: function () {
             var C = this;
             var props = {
                 _backup: {},
@@ -582,7 +593,7 @@
                 _relationships: {},
                 _validators: {}
             };
-            if (arguments.length>0) {
+            if (arguments.length > 0) {
                 Ember.merge(props, arguments[0]);
             }
             this._initProperties([props]);
@@ -590,7 +601,7 @@
             return instance;
         },
 
-        createResolved: function() {
+        createResolved: function () {
             var C = this;
             var instance = C.create(arguments);
             instance.resolve(instance);
@@ -599,16 +610,16 @@
 
         _create: Ember.Object.create,
 
-        getName: function() {
-            var name = this+"";
-            if(name && name.lastIndexOf(".") != -1) {
-                name = name.substr(name.lastIndexOf(".")+1);
+        getName: function () {
+            var name = this + '';
+            if (name && name.lastIndexOf('.') !== -1) {
+                name = name.substr(name.lastIndexOf('.') + 1);
             }
             return name;
         },
 
         find: function (id) {
-            Ember.assert("You must provide a valid id when searching for " + this, (id !== undefined));
+            Ember.assert('You must provide a valid id when searching for ' + this, (id !== undefined));
             var record = this.create();
             return this.adapter.find(this, record, id);
         },
@@ -637,15 +648,16 @@
     });
 
     window.Frzn = Frzn;
-}();
+})();
 
-!function(){
-
+(function(){
+    'use strict';
     var NullableValidator = Ember.Object.extend({
         errorMessage: 'Field {{name}} cannot be null',
         validate: function(value) {
-            if(this.get('value') === true)
+            if(this.get('value') === true){
                 return true;
+            }
             return value !== null && value !== undefined;
         }
     });
@@ -653,8 +665,9 @@
     var BlankValidator = Ember.Object.extend({
         errorMessage: 'Field {{name}} cannot be empty',
         validate: function(value) {
-            if(this.get('value') === true)
+            if(this.get('value') === true) {
                 return true;
+            }
             return value !== '';
         }
     });
@@ -716,7 +729,7 @@
     var initValidators = function(model, name, options) {
         if(options && !$.isEmptyObject(options)) {
             var validators = get(model, '_validators');
-            var a = []
+            var a = [];
             for(var k in options) {
                 if(options.hasOwnProperty(k)) {
                     var v = Frzn.getValidator(k, options[k]);
@@ -736,7 +749,6 @@
             if(!$.isEmptyObject(validators)) {
                 for(var k in validators) {
                     if(validators.hasOwnProperty(k)) {
-                        var a = validators[k];
                         for(var i = 0; i < k.length; k++) {
                             if(!k[i].validate()) {
                                 errors.push(k);
@@ -753,8 +765,9 @@
             return initValidators(this, field, options);
         }
     });
-}();
-!function () {
+})();
+(function () {
+    'use strict';
     Frzn.Store = Ember.ObjectProxy.extend({
         init: function() {
             this._super();
@@ -803,8 +816,9 @@
             this.set('content.' + name, Ember.Object.create({}));
         }
     });
-}();
-!function() {
+})();
+(function() {
+    'use strict';
     var AbstractAdapter = Ember.Object.extend({
         extractMeta: Ember.K,
 
@@ -927,8 +941,8 @@
          * @param id {object} - the id of the object to find
          * @return {object} - a model instance, that is promise too
          */
-        find: function(modelClass, record, id) {
-            Ember.assert("You must provide a valid find function for your adapter", false);
+        find: function() {
+            Ember.assert('You must provide a valid find function for your adapter', false);
         },
 
         /**
@@ -937,32 +951,32 @@
          * @param records {Frzn.RecordArray} - the provided record array that will be used to fulfill the request
          * @return {object} - a model instance, that is promise too
          */
-        findAll: function(modelClass, records) {
-            Ember.assert("You must provide a valid findAll function for your adapter", false);
+        findAll: function() {
+            Ember.assert('You must provide a valid findAll function for your adapter', false);
         },
 
         findQuery: function() {
-            Ember.assert("You must provide a valid findQuery function for your adapter", false);
+            Ember.assert('You must provide a valid findQuery function for your adapter', false);
         },
 
         findIds: function() {
-            Ember.assert("You must provide a valid findIds function for your adapter", false);
+            Ember.assert('You must provide a valid findIds function for your adapter', false);
         },
 
         createRecord: function() {
-            Ember.assert("You must provide a valid createRecord function for your adapter", false);
+            Ember.assert('You must provide a valid createRecord function for your adapter', false);
         },
 
         updateRecord: function() {
-            Ember.assert("You must provide a valid updateRecord function for your adapter", false);
+            Ember.assert('You must provide a valid updateRecord function for your adapter', false);
         },
 
         reloadRecord: function() {
-            Ember.assert("You must provide a valid reloadRecord function for your adapter", false);
+            Ember.assert('You must provide a valid reloadRecord function for your adapter', false);
         },
 
         deleteRecord: function() {
-            Ember.assert("You must provide a valid delete function for your adapter", false);
+            Ember.assert('You must provide a valid delete function for your adapter', false);
         }
     });
 
@@ -970,7 +984,7 @@
         init: function() {
             this._super();
             this.set('meta', Em.Object.create({}));
-            Ember.assert("You must specify a type for a record array", this.type != undefined);
+            Ember.assert('You must specify a type for a record array', this.type !== undefined);
         },
 
         load: function(data) {
@@ -1036,14 +1050,17 @@
         findQuery: function(modelClass, records, params) {
             var data = this.database;
             this.set('limit', 100);
-            if(Ember.get(params, 'limit'))
+            if(Ember.get(params, 'limit')) {
                 this.set('limit', Ember.get(params, 'limit'));
+            }
             this.set('offset', 0);
-            if(Ember.get(params, 'offset'))
+            if(Ember.get(params, 'offset')) {
                 this.set('offset', Ember.get(params, 'offset'));
+            }
             for(var prop in params) {
-                if(prop !== 'limit' && prop !== 'offset' && prop !== 'sortBy' && prop !== 'sortDir')
+                if(prop !== 'limit' && prop !== 'offset' && prop !== 'sortBy' && prop !== 'sortDir'){
                     data = data.filterBy(prop, params[prop]);
+                }
             }
             var sortBy = Ember.get(params, 'sortBy');
             if(sortBy) {
@@ -1055,7 +1072,7 @@
                     if(Ember.get(a, sortBy) < Ember.get(b, sortBy)) {
                         return ascending ? -1 : 1;
                     }
-                    if(Ember.get(a, sortBy) == Ember.get(b, sortBy)) {
+                    if(Ember.get(a, sortBy) === Ember.get(b, sortBy)) {
                         return 0;
                     }
                 });
@@ -1103,7 +1120,7 @@
             var data = this.database.findBy(modelClass.idProperty, record.getId());
             if(data) {
                 this.database = this.database.without(data);
-                this._didDelete(record.toPlainObject(), record)
+                this._didDelete(record.toPlainObject(), record);
             } else {
                 record.reject({
                     errorCode: 404,
@@ -1126,8 +1143,9 @@
     Frzn.AbstractAdapter = AbstractAdapter;
     Frzn.RecordArray = RecordArray;
     Frzn.InMemoryAdapter = InMemoryAdapter;
-}();
-!function() {
+})();
+(function() {
+    'use strict';
     var UrlMappingAdapter = Frzn.AbstractAdapter.extend({
         rootPath: '',
 
@@ -1184,8 +1202,8 @@
 
         init: function() {
             this._super();
-            Ember.assert("You must provide a valid url map table", this.get('urlMapping') !== null && this.get('urlMapping') !== undefined && !$.isEmptyObject(this.get('urlMapping')));
-            Ember.assert("Url map table must be a valid hash object", !$.isEmptyObject(this.get('urlMapping')));
+            Ember.assert('You must provide a valid url map table', this.get('urlMapping') !== null && this.get('urlMapping') !== undefined && !$.isEmptyObject(this.get('urlMapping')));
+            Ember.assert('Url map table must be a valid hash object', !$.isEmptyObject(this.get('urlMapping')));
         },
 
         /**
@@ -1207,7 +1225,7 @@
 
             var mapping = this.get('urlMapping');
             var actionData = mapping[action];
-            Ember.warn("No configuration found for action " + action, actionData !== undefined);
+            Ember.warn('No configuration found for action ' + action, actionData !== undefined);
             actionData = actionData || {url: ':resourceURI/', type: 'GET', dataType: 'json'};
             actionData = Ember.copy(actionData, true);
             var url = typeof modelClass.url === 'function' ? modelClass.url() : modelClass.url;
@@ -1227,10 +1245,11 @@
                 }
             }
             if(this.rootPath) {
-                if(typeof this.rootPath === 'function')
+                if(typeof this.rootPath === 'function') {
                     actionData.url = this.rootPath() + actionData.url;
-                else
+                } else {
                     actionData.url = this.rootPath + actionData.url;
+                }
             }
 
             return actionData;
@@ -1414,8 +1433,9 @@
     });
 
     Frzn.UrlMappingAdapter = UrlMappingAdapter;
-}();
-!function() {
+})();
+(function() {
+    'use strict';
     var RESTAdapter = Frzn.UrlMappingAdapter.extend({
         urlMapping: {
             find: {
@@ -1464,4 +1484,4 @@
     });
 
     Frzn.RESTAdapter = RESTAdapter;
-}();
+})();

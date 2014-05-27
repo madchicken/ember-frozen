@@ -1,4 +1,5 @@
-!function() {
+(function() {
+    'use strict';
     var converters = {};
 
     var getConverter = function(name) {
@@ -11,21 +12,22 @@
 
     var SimpleConverter = Ember.Object.extend({
         init: function() {
-            Ember.warn("Using Simple converter for " + this.get('name'), true);
+            Ember.warn('Using Simple converter for ' + this.get('name'), true);
         },
 
         convert: function(value) {
-            if(value)
+            if(value){
                 return value.valueOf();
+            }
             return value;
         }
     });
 
     registerConverter('model', Ember.Object.extend({
         convert: function(value, options) {
-            if(value instanceof options.destination)
+            if(value instanceof options.destination){
                 return value;
-            else {
+            } else {
                 if(value && typeof value === 'object') {
                     //try to build a new destination object
                     return options.destination.create(value);
@@ -40,7 +42,7 @@
             if(value instanceof Array) {
                 var array = [];
                 for(var i = 0; i < value.length; i++) {
-                    array.push(options.destination.create(value[i]))
+                    array.push(options.destination.create(value[i]));
                 }
                 return array;
             }
@@ -50,19 +52,21 @@
 
     registerConverter('string', SimpleConverter.extend({
         convert: function(value) {
-            if(!Ember.isEmpty(value))
-                return (new String(value)).valueOf();
-            else
+            if(!Ember.isEmpty(value)){
+                return (String(value)).valueOf();
+            } else {
                 return value;
+            }
         }
     }));
 
     registerConverter('boolean', SimpleConverter.extend({
         convert: function(value) {
-            if (value  != null)
+            if (value  !== null){
                 return !!value;
-            else
+            } else {
                 return null;
+            }
         }
     }));
 
@@ -75,7 +79,7 @@
     registerConverter('number', SimpleConverter.extend({
         convert: function(value) {
             if(value !== null && value !== undefined) {
-                var num = new Number(value);
+                var num = Number(value);
                 return num.valueOf();
             }
             return value;
@@ -84,8 +88,9 @@
 
     registerConverter('date', SimpleConverter.extend({
         isValidDate: function(d) {
-            if ( Object.prototype.toString.call(d) !== "[object Date]" )
+            if ( Object.prototype.toString.call(d) !== '[object Date]' ){
                 return false;
+            }
             return !isNaN(d.getTime());
         },
 
@@ -93,17 +98,17 @@
             if(value !== null && value !== undefined) {
                 if(typeof value === 'string') {
                     var d = new Date(Date.parse(value));
-                    if(isNaN(d.getTime()))
+                    if(isNaN(d.getTime())){
                         return null;
-                    else
+                    } else {
                         return d;
-                }
-                else if (value instanceof Date)
+                    }
+                } else if (value instanceof Date) {
                     return value;
-                else {
-                    var d = new Date(value);
-                    if(this.isValidDate(d)) {
-                        return d;
+                } else {
+                    var date = new Date(value);
+                    if(this.isValidDate(date)) {
+                        return date;
                     }
                     return null;
                 }
@@ -121,4 +126,4 @@
     });
 
     Frzn.SimpleConverter = SimpleConverter;
-}();
+})();

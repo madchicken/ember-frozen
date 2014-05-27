@@ -1,10 +1,11 @@
-!function(){
-
+(function(){
+    'use strict';
     var NullableValidator = Ember.Object.extend({
         errorMessage: 'Field {{name}} cannot be null',
         validate: function(value) {
-            if(this.get('value') === true)
+            if(this.get('value') === true){
                 return true;
+            }
             return value !== null && value !== undefined;
         }
     });
@@ -12,8 +13,9 @@
     var BlankValidator = Ember.Object.extend({
         errorMessage: 'Field {{name}} cannot be empty',
         validate: function(value) {
-            if(this.get('value') === true)
+            if(this.get('value') === true) {
                 return true;
+            }
             return value !== '';
         }
     });
@@ -75,7 +77,7 @@
     var initValidators = function(model, name, options) {
         if(options && !$.isEmptyObject(options)) {
             var validators = get(model, '_validators');
-            var a = []
+            var a = [];
             for(var k in options) {
                 if(options.hasOwnProperty(k)) {
                     var v = Frzn.getValidator(k, options[k]);
@@ -95,7 +97,6 @@
             if(!$.isEmptyObject(validators)) {
                 for(var k in validators) {
                     if(validators.hasOwnProperty(k)) {
-                        var a = validators[k];
                         for(var i = 0; i < k.length; k++) {
                             if(!k[i].validate()) {
                                 errors.push(k);
@@ -112,4 +113,4 @@
             return initValidators(this, field, options);
         }
     });
-}();
+})();

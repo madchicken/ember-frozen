@@ -1,4 +1,5 @@
-!function() {
+(function() {
+    'use strict';
     var RESTAdapter = Frzn.UrlMappingAdapter.extend({
         urlMapping: {
             find: {
@@ -47,4 +48,4 @@
     });
 
     Frzn.RESTAdapter = RESTAdapter;
-}();
+})();
