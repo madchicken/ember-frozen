@@ -18,8 +18,8 @@
             type: options.relationshipType,
             options: options
         });
-        var data = get(model, '_data');
-        var rels = get(model, '_relationships');
+        var data = model._data;
+        var rels = model._relationships;
         set(rels, name, rel);
         set(data, name, undefined);
     };
@@ -41,7 +41,7 @@
             } else {
                 set(model, '_data.' + name, options.defaultValue);
             }
-            var properties = get(model, '_properties');
+            var properties = model._properties;
             if(-1 === properties.indexOf(name)) //do not redefine
                 properties.push(name);
         }
@@ -53,7 +53,7 @@
         var data = get(model, '_data');
         if(meta.options.isRelationship) {
             //we are dealing with a relationship, so get its definition first
-            var rel = get(model, '_relationships.' + key);
+            var rel = model['_relationships'][key];
             //the real value is the content of the relationship proxy object
             if(meta.options.embedded === false && meta.options.fetch === 'eager') {
                 return rel.fetch();
@@ -71,13 +71,13 @@
         var converter = getConverter(meta.type);
         value = converter.convert(value, meta.options);
         //prepare object: get _data and _backup
-        var data = get(model, '_data');
-        var backup = get(model, '_backup');
+        var data = model._data;
+        var backup = model._backup;
         //the old value is the one already present in _data object
         var oldValue = get(data, key);
         if(meta.options.isRelationship) {
             //we are dealing with a relationship, so get its definition first
-            var rel = get(model, '_relationships.' + key);
+            var rel = model['_relationships'][key];
             //old value is the content of the relationship object
             oldValue = get(rel, 'content');
             //set the parent object in the content
@@ -92,8 +92,8 @@
             set(data, key, value);
         }
         //save the old value in the backup object if needed
-        if(!get(backup, key))
-            set(backup, key, oldValue);
+        if(!backup[key])
+            backup[key] = oldValue;
         //mark dirty the field if necessary
         if(oldValue != value)
             markDirty(model, key);
@@ -147,19 +147,19 @@
         set(model, '_backup', {});
         var dirtyAttrs = get(model, '_dirtyAttributes');
         Ember.setProperties(model, Ember.getProperties(backup, dirtyAttrs));
-        var relationships = get(model, '_relationships');
+        var relationships = model._relationships;
         for(var name in relationships) {
             if(relationships.hasOwnProperty(name)) {
                 model.getRel(name).discard();
             }
         }
-        set(model, '_dirtyAttributes', []);
+        model._dirtyAttributes = [];
         return model;
     };
 
 
     var markDirty = function(model, field) {
-        var dirtyAttributes = model.get('_dirtyAttributes');
+        var dirtyAttributes = model._dirtyAttributes;
         if(-1 === dirtyAttributes.indexOf(field)) {
             dirtyAttributes.push(field);
         }
@@ -185,7 +185,8 @@
         init: function() {
             this._super();
             this.clientId = guid();
-            saveState(this);
+            this._dirtyAttributes = [];
+            this._backup = {};
         },
 
         getId: function() {
@@ -210,10 +211,9 @@
                 return !Ember.isEmpty(dirtyAttributes) && (dirtyAttributesindexOf(attr) != -1);
             } else {
                 var dirty = false;
-                var relationships = this.get('_relationships');
-                for(var relname in relationships) {
-                    if(relationships.hasOwnProperty(relname)) {
-                        var rel = relationships[relname];
+                for(var relname in this._relationships) {
+                    if(this._relationships.hasOwnProperty(relname)) {
+                        var rel = this._relationships[relname];
                         if(rel.get('type') == 'hasOne' || rel.get('type') == 'belongsTo') {
                             dirty |= rel.get('content').isDirty();
                         } else if(rel.get('type') == 'hasMany') {
@@ -232,8 +232,8 @@
         },
 
         toPlainObject: function() {
-            var properties = this.get('_properties');
-            var rel = this.get('_relationships');
+            var properties = this._properties;
+            var rel = this._relationships;
             var keep = [];
             var related = {};
             for(var i = 0; i < properties.length; i++) {
@@ -296,19 +296,19 @@
 
         create: function() {
             var C = this;
-            this._initProperties([{
+            var props = {
                 _backup: {},
                 _data: {},
                 _dirtyAttributes: [],
                 _properties: [],
                 _relationships: {},
                 _validators: {}
-            }]);
-            var instance = new C();
+            };
             if (arguments.length>0) {
-                instance.setProperties(arguments[0]);
+                Ember.merge(props, arguments[0]);
             }
-            instance.commit();
+            this._initProperties([props]);
+            var instance = new C();
             return instance;
         },
 
@@ -331,7 +331,7 @@
 
         find: function (id) {
             Ember.assert("You must provide a valid id when searching for " + this, (id !== undefined));
-            var record = this.create()
+            var record = this.create();
             return this.adapter.find(this, record, id);
         },
 

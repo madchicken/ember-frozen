@@ -1,0 +1,102 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Jasmine Spec Runner</title>
+
+    <link rel="shortcut icon" type="image/png" href="lib/jasmine/lib/jasmine-core/jasmine_favicon.png">
+    <link rel="stylesheet" type="text/css" href="lib/jasmine/lib/jasmine-core/jasmine.css">
+    <script type="text/javascript" src="lib/jquery/dist/jquery.js"></script>
+    <script type="text/javascript" src="lib/handlebars/handlebars.js"></script>
+    <script type="text/javascript" src="lib/ember/ember.js"></script>
+    <!-- include source files here... -->
+    <script type="text/javascript" src="dist/ember-frozen.js"></script>
+
+
+    <script type="text/javascript">
+        (function () {
+            App = Ember.Application.create();
+
+            var Model = Frzn.Model, attr = Frzn.attr, hasOne = Frzn.hasOne, hasMany = Frzn.hasMany;
+
+            App.EmailAddress = Model.extend({
+                name: attr(),
+                email: attr()
+            });
+
+            App.Address = Model.extend({
+                address: attr(),
+                city: attr()
+            });
+
+            App.EmailAddress = Model.extend({
+                name: attr(),
+                email: attr()
+            });
+
+            App.Person = Model.extend({
+                name: attr(),
+                age: attr('number'),
+                birthDate: attr('date'),
+                address: hasOne(App.Address),
+                emails: hasMany(App.EmailAddress)
+            });
+
+
+            App.Router.map(function() {
+                // put your routes here
+            });
+
+            App.IndexRoute = Ember.Route.extend({
+                model: function() {
+                    return store;
+                }
+            });
+
+            var store = [];
+            for(var i = 0; i < 500; i++) {
+                var k = i+1;
+                store.push(App.Person.create(
+                    {
+                        id: k,
+                        name: 'Paul('+k+')',
+                        age: 45,
+                        address: {
+                            id: k,
+                            address: 'address string ' + k,
+                            city: 'San Francisco, CA'
+                        },
+                        emails: [{
+                            id: k,
+                            name: 'Paul ('+k+') draios',
+                            email: 'paul@draios.com'
+                        }, {
+                            id: k+1,
+                            name: 'Paul ('+k+') gmail',
+                            email: 'paul@gmail.com'
+                        }]
+                    }
+                ));
+            }
+
+        })();
+    </script>
+
+</head>
+
+<body>
+<script type="text/x-handlebars">
+    <h2> Welcome to Ember.js</h2>
+
+    {{outlet}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="index">
+    <ul>
+        {{#each item in model}}
+        <li>{{item.name}}</li>
+        {{/each}}
+    </ul>
+</script>
+</body>
+</html>
