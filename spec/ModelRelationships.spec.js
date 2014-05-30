@@ -96,6 +96,26 @@ describe("Frozen Model Relationships", function() {
                 expect(json.address.address).toBe('address string');
             });
         });
+
+        it('Should respect nested relationships', function() {
+            Test.City = Model.extend({
+                name: attr()
+            });
+            Test.Address = Model.extend({
+                address: attr(),
+                city: hasOne(Test.City)
+            });
+            Test.Person = Model.extend({
+                name: attr(),
+                address: hasOne(Test.Address)
+            });
+
+            var person = Test.Person.create({name: 'John', address: Test.Address.create({address: 'address string', city: { name: 'San Francisco' }})});
+            expect(person.getRel('address').getObjectClass()).toBe(Test.Address);
+            expect(person.get('address') instanceof Test.Address).toBe(true);
+            expect(person.get('address.address')).toBe('address string');
+            expect(person.get('address.city.name')).toBe('San Francisco');
+        });
     });
 
 

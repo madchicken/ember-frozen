@@ -15,22 +15,25 @@
 
         putRecord: function(record) {
             var store = this.getCacheFor(record.constructor.getName());
-            var old = this.getRecord(record);
+            var old = store.get(record.getId()) || store.get(record.getClientId());
             if(old) {
                 old.load(record.toPlainObject());
-                store.set(old.getClientId(), old);
                 if(old.getId()) {
                     store.set(old.getId(), old);
+                    store.remove(old.getClientId());
+                } else {
+                    store.set(old.getClientId(), old);
                 }
-
             } else {
-                store.set(record.getClientId(), record);
                 if(record.getId()) {
                     store.set(record.getId(), record);
+                    store.remove(record.getClientId());
+                } else {
+                    store.set(record.getClientId(), record);
                 }
             }
 
-            return old || record;
+            return old ? old : record;
         },
 
         getRecord: function(record) {

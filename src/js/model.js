@@ -172,7 +172,7 @@
 
     var guid = function() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+            var r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8);
             return v.toString(16);
         });
     };
@@ -268,18 +268,22 @@
             if (this.getId()) {
                 return this.update();
             }
+            this.resetPromise();
             return this.constructor.adapter.createRecord(this.constructor, this);
         },
 
         update: function () {
+            this.resetPromise();
             return this.constructor.adapter.updateRecord(this.constructor, this);
         },
 
         remove: function () {
+            this.resetPromise();
             return this.constructor.adapter.deleteRecord(this.constructor, this);
         },
 
         reload: function () {
+            this.resetPromise();
             return this.constructor.adapter.reloadRecord(this.constructor, this);
         },
 
@@ -315,12 +319,6 @@
             }
             this._initProperties([props]);
             var instance = new C();
-            return instance;
-        },
-
-        createResolved: function () {
-            var C = this;
-            var instance = C.create(arguments);
             instance.resolve(instance);
             return instance;
         },
@@ -337,7 +335,11 @@
 
         find: function (id) {
             Ember.assert('You must provide a valid id when searching for ' + this, (id !== undefined));
-            var record = this.create();
+            var properties = {};
+            properties[this.idProperty] = id;
+            var record = this.create(properties);
+            record = this.adapter.getFromStore(record) || record;
+            record.resetPromise();
             return this.adapter.find(this, record, id);
         },
 

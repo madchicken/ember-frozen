@@ -204,6 +204,13 @@
             });
         },
 
+        generateId: function() {
+            return 'xxxxyxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8);
+                return v.toString(16);
+            });
+        },
+
         find: function(modelClass, record, id) {
             var data = this.database.findBy(modelClass.idProperty, id);
             if(data) {
@@ -266,7 +273,7 @@
         findIds: function(modelClass, records, ids) {
             var data = Em.A([]);
             for(var index = 0; index < ids.length; index++) {
-                var rec = this.database.findBy('id', ids[index]);
+                var rec = this.database.findBy(modelClass.idProperty, ids[index]);
                 data.push(rec);
             }
             this._didLoadMany(data, records);
@@ -274,7 +281,7 @@
         },
 
         createRecord: function(modelClass, record) {
-            record.set('id', this.database.length);
+            record.set(record.constructor.idProperty, this.generateId());
             this.database.push(record);
             this._didCreate(record.toPlainObject(), record);
         },

@@ -1,26 +1,26 @@
-describe("Frozen Model", function () {
+describe('Frozen Model', function () {
 
     var Test = Em.Namespace.create({});
     var Model = Frzn.Model, attr = Frzn.attr, hasOne = Frzn.hasOne, hasMany = Frzn.hasMany;;
 
     describe('Attributes', function() {
-        it("Using attr function should create a field of type string if no parameters are given", function () {
+        it('Using attr function should create a field of type string if no parameters are given', function () {
             var MyModel = Model.extend({
                 name: attr()
             });
 
-            expect(MyModel.metaForProperty('name').type).toBe("string");
+            expect(MyModel.metaForProperty('name').type).toBe('string');
         });
 
-        it("Attr function will save field type passed as argument in its meta properties", function () {
+        it('Attr function will save field type passed as argument in its meta properties', function () {
             var MyModel = Model.extend({
                 age: attr('number')
             });
 
-            expect(MyModel.metaForProperty('age').type).toBe("number");
+            expect(MyModel.metaForProperty('age').type).toBe('number');
         });
 
-        it("Fields defined through the attr function should act as normal computed properties", function () {
+        it('Fields defined through the attr function should act as normal computed properties', function () {
             var MyModel = Model.extend({
                 name: attr(),
                 age: attr('number')
@@ -35,7 +35,7 @@ describe("Frozen Model", function () {
             expect(person.get('age')).toBe(45);
         });
 
-        it("A default value for a field will be returned when the field is undefined and a defaultValue property was given during attribute definition", function () {
+        it('A default value for a field will be returned when the field is undefined and a defaultValue property was given during attribute definition', function () {
             var MyModel = Model.extend({
                 name: attr(),
                 age: attr('number', {defaultValue: 18})
@@ -48,23 +48,23 @@ describe("Frozen Model", function () {
             person.set('age', 39);
             expect(person.get('age')).toBe(39);
         });
-        it("Using attr function should create a field of type string if no parameters are given", function () {
+        it('Using attr function should create a field of type string if no parameters are given', function () {
             var MyModel = Model.extend({
                 name: attr()
             });
 
-            expect(MyModel.metaForProperty('name').type).toBe("string");
+            expect(MyModel.metaForProperty('name').type).toBe('string');
         });
 
-        it("Attr function will save field type passed as argument in its meta properties", function () {
+        it('Attr function will save field type passed as argument in its meta properties', function () {
             var MyModel = Model.extend({
                 age: attr('number')
             });
 
-            expect(MyModel.metaForProperty('age').type).toBe("number");
+            expect(MyModel.metaForProperty('age').type).toBe('number');
         });
 
-        it("Fields defined through the attr function should act as normal computed properties", function () {
+        it('Fields defined through the attr function should act as normal computed properties', function () {
             var MyModel = Model.extend({
                 name: attr(),
                 age: attr('number')
@@ -79,7 +79,7 @@ describe("Frozen Model", function () {
             expect(person.get('age')).toBe(45);
         });
 
-        it("A default value for a field will be returned when the field is undefined and a defaultValue property was given during attribute definition", function () {
+        it('A default value for a field will be returned when the field is undefined and a defaultValue property was given during attribute definition', function () {
             var MyModel = Model.extend({
                 name: attr(),
                 age: attr('number', {defaultValue: 18})
@@ -227,7 +227,7 @@ describe("Frozen Model", function () {
                 birthDate: attr('date')
             });
 
-            var person = MyModel.create({name: 'John', age: 39, birthDate: "bad date"});
+            var person = MyModel.create({name: 'John', age: 39, birthDate: 'bad date'});
             expect(person.get('birthDate')).toBe(null);
         });
 

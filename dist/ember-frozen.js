@@ -455,7 +455,7 @@
 
     var guid = function() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+            var r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8);
             return v.toString(16);
         });
     };
@@ -551,18 +551,22 @@
             if (this.getId()) {
                 return this.update();
             }
+            this.resetPromise();
             return this.constructor.adapter.createRecord(this.constructor, this);
         },
 
         update: function () {
+            this.resetPromise();
             return this.constructor.adapter.updateRecord(this.constructor, this);
         },
 
         remove: function () {
+            this.resetPromise();
             return this.constructor.adapter.deleteRecord(this.constructor, this);
         },
 
         reload: function () {
+            this.resetPromise();
             return this.constructor.adapter.reloadRecord(this.constructor, this);
         },
 
@@ -598,12 +602,6 @@
             }
             this._initProperties([props]);
             var instance = new C();
-            return instance;
-        },
-
-        createResolved: function () {
-            var C = this;
-            var instance = C.create(arguments);
             instance.resolve(instance);
             return instance;
         },
@@ -620,7 +618,11 @@
 
         find: function (id) {
             Ember.assert('You must provide a valid id when searching for ' + this, (id !== undefined));
-            var record = this.create();
+            var properties = {};
+            properties[this.idProperty] = id;
+            var record = this.create(properties);
+            record = this.adapter.getFromStore(record) || record;
+            record.resetPromise();
             return this.adapter.find(this, record, id);
         },
 
@@ -783,22 +785,25 @@
 
         putRecord: function(record) {
             var store = this.getCacheFor(record.constructor.getName());
-            var old = this.getRecord(record);
+            var old = store.get(record.getId()) || store.get(record.getClientId());
             if(old) {
                 old.load(record.toPlainObject());
-                store.set(old.getClientId(), old);
                 if(old.getId()) {
                     store.set(old.getId(), old);
+                    store.remove(old.getClientId());
+                } else {
+                    store.set(old.getClientId(), old);
                 }
-
             } else {
-                store.set(record.getClientId(), record);
                 if(record.getId()) {
                     store.set(record.getId(), record);
+                    store.remove(record.getClientId());
+                } else {
+                    store.set(record.getClientId(), record);
                 }
             }
 
-            return old || record;
+            return old ? old : record;
         },
 
         getRecord: function(record) {
@@ -1023,6 +1028,13 @@
             });
         },
 
+        generateId: function() {
+            return 'xxxxyxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8);
+                return v.toString(16);
+            });
+        },
+
         find: function(modelClass, record, id) {
             var data = this.database.findBy(modelClass.idProperty, id);
             if(data) {
@@ -1085,7 +1097,7 @@
         findIds: function(modelClass, records, ids) {
             var data = Em.A([]);
             for(var index = 0; index < ids.length; index++) {
-                var rec = this.database.findBy('id', ids[index]);
+                var rec = this.database.findBy(modelClass.idProperty, ids[index]);
                 data.push(rec);
             }
             this._didLoadMany(data, records);
@@ -1093,7 +1105,7 @@
         },
 
         createRecord: function(modelClass, record) {
-            record.set('id', this.database.length);
+            record.set(record.constructor.idProperty, this.generateId());
             this.database.push(record);
             this._didCreate(record.toPlainObject(), record);
         },
