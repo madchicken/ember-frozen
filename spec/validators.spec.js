@@ -1,4 +1,5 @@
 describe('Model validators', function() {
+    Ember.deprecate = function(){};
     var Test = Em.Namespace.create({});
     var Model = Frzn.Model, attr = Frzn.attr, hasOne = Frzn.hasOne;
 

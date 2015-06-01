@@ -1,5 +1,6 @@
 describe('Store', function () {
 
+    Ember.deprecate = function(){};
     var Test = Ember.Namespace.create({});
     var Model = Frzn.Model.extend(), attr = Frzn.attr, hasOne = Frzn.hasOne;
 

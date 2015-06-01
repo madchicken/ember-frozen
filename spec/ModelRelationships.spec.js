@@ -1,4 +1,5 @@
 describe("Frozen Model Relationships", function() {
+    Ember.deprecate = function(){};
     var Test = Ember.Namespace.create({name: 'Test'});
     var Model = Frzn.Model, attr = Frzn.attr, hasOne = Frzn.hasOne, hasMany = Frzn.hasMany;
 

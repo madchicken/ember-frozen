@@ -1,4 +1,5 @@
 describe("Frozen Lazy In Memory Adapter", function () {
+    Ember.deprecate = function(){};
     var Test = Ember.Namespace.create({});
     var Model = Frzn.Model.extend(), attr = Frzn.attr, hasOne = Frzn.hasOne, hasMany = Frzn.hasMany;
 

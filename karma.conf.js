@@ -17,7 +17,7 @@ module.exports = function (config) {
         files: [
             'lib/jquery/dist/jquery.js',
             'lib/handlebars/handlebars.js',
-            'lib/ember/ember.js',
+            'lib/ember/ember.debug.js',
             "src/js/frozen.js",
             "src/js/converters.js",
             "src/js/relationships.js",
