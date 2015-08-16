@@ -1,6 +1,6 @@
 {
     "name": "ember-frozen",
-    "version": "0.8.9",
+    "version": "0.8.10",
     "title": "Ember Frozen",
     "homepage": "https://github.com/madchicken/ember-frozen",
     "description": "Another persistence library for the amazing Emberjs Library",
