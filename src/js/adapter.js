@@ -161,7 +161,7 @@
         }
     });
 
-    var RecordArray = Ember.ArrayProxy.extend(Ember.DeferredMixin, {
+    var RecordArray = Ember.ArrayProxy.extend(Frzn.DeferredMixin, {
         init: function() {
             this._super();
             this.set('meta', Em.Object.create({}));

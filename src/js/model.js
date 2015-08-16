@@ -2,6 +2,63 @@
     'use strict';
     var get = Ember.get, set = Ember.set, getConverter = Frzn.getConverter, relationships = Frzn.relationships;
 
+    var DeferredMixin = Ember.Mixin.create({
+        /**
+         Add handlers to be called when the Deferred object is resolved or rejected.
+         @method then
+         @param {Function} resolve a callback function to be called when done
+         @param {Function} reject  a callback function to be called when failed
+         */
+        then: function (resolve, reject, label) {
+            var deferred, promise, entity;
+
+            entity = this;
+            deferred = get(this, '_deferred');
+            promise = deferred.promise;
+
+            function fulfillmentHandler(fulfillment) {
+                if (fulfillment === promise) {
+                    return resolve(entity);
+                } else {
+                    return resolve(fulfillment);
+                }
+            }
+
+            return promise.then(resolve && fulfillmentHandler, reject, label);
+        },
+
+        /**
+         Resolve a Deferred object and call any `doneCallbacks` with the given args.
+         @method resolve
+         */
+        resolve: function (value) {
+            var deferred, promise;
+
+            deferred = get(this, '_deferred');
+            promise = deferred.promise;
+
+            if (value === this) {
+                deferred.resolve(promise);
+            } else {
+                deferred.resolve(value);
+            }
+        },
+
+        /**
+         Reject a Deferred object and call any `failCallbacks` with the given args.
+         @method reject
+         */
+        reject: function (value) {
+            get(this, '_deferred').reject(value);
+        },
+
+        _deferred: Ember.computed(function () {
+            return Ember.RSVP.defer('Ember: DeferredMixin - ' + this);
+        })
+    });
+
+    Frzn.DeferredMixin = DeferredMixin;
+
     var setupRelationship = function (model, name, options) {
         //For relationships we create a wrapper object using Ember proxies
         if (typeof options.destination === 'string') {
@@ -177,7 +234,7 @@
         });
     };
 
-    Frzn.Model = Ember.Deferred.extend(Ember.Evented, {
+    Frzn.Model = Ember.Object.extend(DeferredMixin, Ember.Evented, {
         isAjax: false,
         isLoaded: false,
         isSaved: false,
