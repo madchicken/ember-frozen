@@ -460,7 +460,7 @@
         });
     };
 
-    Frzn.Model = Ember.RSVP.Promise.extend(Ember.Evented, {
+    Frzn.Model = Ember.Deferred.extend(Ember.Evented, {
         isAjax: false,
         isLoaded: false,
         isSaved: false,
@@ -985,7 +985,7 @@
         }
     });
 
-    var RecordArray = Ember.ArrayProxy.extend(Ember.RSVP.defer(), {
+    var RecordArray = Ember.ArrayProxy.extend(Ember.DeferredMixin, {
         init: function() {
             this._super();
             this.set('meta', Em.Object.create({}));
